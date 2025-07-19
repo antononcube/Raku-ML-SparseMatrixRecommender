@@ -1,0 +1,38 @@
+{
+    "name": "ML::SparseMatrixRecommender",
+    "description": "Sparse matrix recommender framework.",
+    "version": "0.0.1",
+    "authors": [
+        "Anton Antonov"
+    ],
+    "auth": "fez:antononcube",
+    "depends": [
+        "Text::CSV",
+        "Data::Reshapers",
+        "Data::TypeSystem",
+        "Math::SparseMatrix",
+        "Math::SparseMatrix::Native"
+    ],
+    "build-depends": [],
+    "provides": {
+        "ML::SparseMatrixRecommender": "lib/ML/SparseMatrixRecommender.rakumod",
+        "ML::SparseMatrixRecommender::AbstractSMR": "lib/ML/SparseMatrixRecommender/AbstractSMR.rakumod",
+        "ML::SparseMatrixRecommender::CompositeSMR": "lib/ML/SparseMatrixRecommender/CompositeSMR.rakumod",
+        "ML::SparseMatrixRecommender::CoreSMR": "lib/ML/SparseMatrixRecommender/CoreSMR.rakumod",
+        "ML::SparseMatrixRecommender::LSAEndowedSMR": "lib/ML/SparseMatrixRecommender/LSAEndowedSMR.rakumod",
+        "ML::SparseMatrixRecommender::LSATopicSMR": "lib/ML/SparseMatrixRecommender/LSATopicSMR.rakumod",
+        "ML::SparseMatrixRecommender::UtilityFunctions": "lib/ML/SparseMatrixRecommender/UtilityFunctions.rakumod"
+    },
+    "license": "GPL-3.0-or-later",
+    "tags": [
+        "LSA",
+        "LSI",
+        "ML",
+        "SMR",
+        "machine learning",
+        "recommendations",
+        "recommender"
+    ],
+    "api": "1",
+    "source-url": "https://github.com/antononcube/Raku-ML-SparseMatrixRecommender.git"
+}
