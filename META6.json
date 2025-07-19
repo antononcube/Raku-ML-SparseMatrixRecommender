@@ -16,9 +16,9 @@
     "build-depends": [],
     "provides": {
         "ML::SparseMatrixRecommender": "lib/ML/SparseMatrixRecommender.rakumod",
-        "ML::SparseMatrixRecommender::AbstractSMR": "lib/ML/SparseMatrixRecommender/AbstractSMR.rakumod",
+        "ML::SparseMatrixRecommender::Abstract": "lib/ML/SparseMatrixRecommender/Abstract.rakumod",
         "ML::SparseMatrixRecommender::CompositeSMR": "lib/ML/SparseMatrixRecommender/CompositeSMR.rakumod",
-        "ML::SparseMatrixRecommender::CoreSMR": "lib/ML/SparseMatrixRecommender/CoreSMR.rakumod",
+        "ML::SparseMatrixRecommender::Core": "lib/ML/SparseMatrixRecommender/Core.rakumod",
         "ML::SparseMatrixRecommender::LSAEndowedSMR": "lib/ML/SparseMatrixRecommender/LSAEndowedSMR.rakumod",
         "ML::SparseMatrixRecommender::LSATopicSMR": "lib/ML/SparseMatrixRecommender/LSATopicSMR.rakumod",
         "ML::SparseMatrixRecommender::UtilityFunctions": "lib/ML/SparseMatrixRecommender/UtilityFunctions.rakumod"

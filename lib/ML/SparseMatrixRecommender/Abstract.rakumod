@@ -1,4 +1,4 @@
-class ML::SparseMatrixRecommender::AbstractSMR {
+class ML::SparseMatrixRecommender::Abstract{
 
     has $!value;
 

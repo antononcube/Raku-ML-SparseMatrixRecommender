@@ -3,12 +3,12 @@ use v6;
 use Text::CSV;
 use Data::Reshapers;
 use Data::TypeSystem::Predicates;
-use ML::SparseMatrixRecommender::AbstractSMR;
+use ML::SparseMatrixRecommender::Abstract;
 use ML::SparseMatrixRecommender::UtilityFunctions;
 
 ## Monadic-like definition.
-class ML::SparseMatrixRecommender::CoreSMR
-        is ML::SparseMatrixRecommender::AbstractSMR
+class ML::SparseMatrixRecommender::Core
+        is ML::SparseMatrixRecommender::Abstract
         does ML::SparseMatrixRecommender::UtilityFunctions {
 
     ##========================================================
@@ -97,8 +97,8 @@ class ML::SparseMatrixRecommender::CoreSMR
     ## Clone
     ##========================================================
     method clone(::?CLASS:D: --> ::?CLASS:D) {
-        my ML::SparseMatrixRecommender::CoreSMR $cloneObj =
-                ML::SparseMatrixRecommender::CoreSMR.new(
+        my ML::SparseMatrixRecommender::Core $cloneObj =
+                ML::SparseMatrixRecommender::Core.new(
                         :@.SMRMatrix,
                         :%!itemInverseIndexes,
                         :%!tagInverseIndexes,
