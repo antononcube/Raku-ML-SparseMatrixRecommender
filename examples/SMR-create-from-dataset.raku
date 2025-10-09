@@ -10,6 +10,7 @@ use Math::SparseMatrix::Utilities;
 
 ##===========================================================
 my Hash @titanic = Data::Reshapers::get-titanic-dataset(headers => 'auto');
+@titanic .= map({ $_<passengerAge> = $_<passengerAge>.Int; $_ });
 
 .say for @titanic.roll(4);
 
@@ -17,19 +18,19 @@ records-summary(@titanic);
 
 say @titanic[0].keys.grep({ $_ ne 'id' });
 
-my ML::SparseMatrixRecommender $smrObj .= new;
+my @prof = "passengerClass:1st", "passengerSex:male", "passengerSurvival:survived";
 
-$smrObj.create-from-wide-form(
-        @titanic,
-        tag-types => @titanic[0].keys.grep({ $_ ne 'id' }).Array,
-        item-column-came => <id>
-    );
+my ML::SparseMatrixRecommender $smrObj .= new;
 
 $smrObj =
         $smrObj
+        .create-from-wide-form(
+                @titanic,
+                tag-types => @titanic[0].keys.grep({ $_ ne 'id' }).Array,
+                item-column-came => <id>)
         .echo-M()
         .echo-matrices()
-        .recommend-by-profile( ["passengerClass:1st", "passengerSex:male", "passengerSurvival:survived"], 10);
+        .recommend-by-profile(@prof, 10);
 
 my $recs = $smrObj.take-value;
 
