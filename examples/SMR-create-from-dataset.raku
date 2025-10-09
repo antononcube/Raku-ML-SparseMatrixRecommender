@@ -1,9 +1,11 @@
 #!/usr/bin/env perl6
 
 use lib <. lib>;
-use ML::SparseMatrixRecommender::Core;
+use ML::SparseMatrixRecommender;
 
 use Data::Reshapers;
+use Math::SparseMatrix :ALL;
+use Math::SparseMatrix::Utilities;
 
 ##===========================================================
 my Hash @titanic = Data::Reshapers::get-titanic-dataset(headers => 'auto');
@@ -12,20 +14,23 @@ my Hash @titanic = Data::Reshapers::get-titanic-dataset(headers => 'auto');
 
 say @titanic[0].keys.grep({ $_ ne 'id' });
 
-my ML::SparseMatrixRecommender::Core $smrObj .= new;
+my ML::SparseMatrixRecommender $smrObj .= new;
 
-$smrObj.make-tag-inverse-indexes-from-wide-form( @titanic, tagTypes => @titanic[0].keys.grep({ $_ ne 'id' }).Array, itemColumnName => <id> );
+$smrObj.create-from-wide-form(
+        @titanic,
+        tag-types => @titanic[0].keys.grep({ $_ ne 'id' }).Array,
+        item-column-came => <id>
+    );
 
-say 'global-weights : ', $smrObj.global-weights('IDF'):!object;
+$smrObj =
+        $smrObj
+        .echo-M()
+        .echo-matrices()
+        .recommend-by-profile( ["passengerClass:1st", "passengerSex:male", "passengerSurvival:survived"], 100);
 
-say '$smrObj.take-tag-inverse-indexes().keys :', $smrObj.take-tag-inverse-indexes().keys;
+my $recs = $smrObj.take-value;
 
-say '$smrObj.take-tag-inverse-indexes() :', $smrObj.take-tag-inverse-indexes();
+my @dsRecs = $recs.map({ %(id => $_.key, score => $_.value) });
+my @dsView = join-across(@dsRecs, @titanic, <id>).sort({ -$_<score> });
 
-my $recs = $smrObj.recommend-by-profile( ["passengerClass:1st", "passengerSex:male"], 1000):!object;
-
-say $recs;
-
-say @titanic.grep({ $_<id> (elem) %($recs).keys });
-
-say "-" x 60;
+say to-pretty-table(@dsView);

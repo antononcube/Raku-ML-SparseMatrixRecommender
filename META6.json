@@ -5,31 +5,23 @@
     "authors": [
         "Anton Antonov"
     ],
-    "auth": "fez:antononcube",
+    "auth": "zef:antononcube",
     "depends": [
-        "Text::CSV",
-        "Data::Reshapers",
         "Data::TypeSystem",
-        "Math::SparseMatrix",
-        "Math::SparseMatrix::Native"
+        "Math::SparseMatrix"
     ],
     "build-depends": [],
     "provides": {
-        "ML::SparseMatrixRecommender": "lib/ML/SparseMatrixRecommender.rakumod",
-        "ML::SparseMatrixRecommender::Abstract": "lib/ML/SparseMatrixRecommender/Abstract.rakumod",
-        "ML::SparseMatrixRecommender::CompositeSMR": "lib/ML/SparseMatrixRecommender/CompositeSMR.rakumod",
-        "ML::SparseMatrixRecommender::Core": "lib/ML/SparseMatrixRecommender/Core.rakumod",
-        "ML::SparseMatrixRecommender::LSAEndowedSMR": "lib/ML/SparseMatrixRecommender/LSAEndowedSMR.rakumod",
-        "ML::SparseMatrixRecommender::LSATopicSMR": "lib/ML/SparseMatrixRecommender/LSATopicSMR.rakumod",
-        "ML::SparseMatrixRecommender::UtilityFunctions": "lib/ML/SparseMatrixRecommender/UtilityFunctions.rakumod"
+        "ML::SparseMatrixRecommender": "lib/ML/SparseMatrixRecommender.rakumod"
     },
-    "license": "GPL-3.0-or-later",
+    "license": "Artistic-2.0",
     "tags": [
         "LSA",
         "LSI",
         "ML",
         "SMR",
         "machine learning",
+        "recommendation system",
         "recommendations",
         "recommender"
     ],
