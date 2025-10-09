@@ -285,12 +285,20 @@ class ML::SparseMatrixRecommender
     ##========================================================
     #| Apply LSI functions to the entries of the recommendation matrix.
     multi method apply-term-weight-functions(
+            :global(:$global-weight-func) = Whatever, #= LSI global term weight function. One of "ColumnSum", "Entropy", "IDF", "None".
+            :local(:$local-weight-func)  = Whatever,  #= LSI local term weight function. One of "Binary", "Log", "None".
+            :normalizer(:$normalizer-func) = Whatever    #= LSI normalizer function. One of "Cosine", "None", "RowSum".
+                                             ) {
+        return self.apply-term-weight-functions($global-weight-func, $local-weight-func, $normalizer-func);
+    }
+
+    multi method apply-term-weight-functions(
             $global-weight-func is copy = Whatever, #= LSI global term weight function. One of "ColumnSum", "Entropy", "IDF", "None".
             $local-weight-func is copy = Whatever,  #= LSI local term weight function. One of "Binary", "Log", "None".
-            $normalizer-func is copy = Whatever,    #= LSI normalizer function. One of "Cosine", "None", "RowSum".
+            $normalizer-func is copy = Whatever     #= LSI normalizer function. One of "Cosine", "None", "RowSum".
                                              ) {
         %!matrices = %!matrices.kv.map(-> $k, $m {
-            $k => self.apply-term-weight-functions($m, $global-weight-func, $local-weight-func, $normalizer-func)
+            $k => self.apply-lsi-weight-functions($m, $global-weight-func, $local-weight-func, $normalizer-func)
         });
 
         # Make the recommender matrix
@@ -430,7 +438,6 @@ class ML::SparseMatrixRecommender
 
         ## Make the sparse matrix/vector for the profile
         my $svec = self.make-profile-vector(%profQuery.Mix);
-        say (:$svec);
 
         ## Compute recommendations
         my $rec = $!M.dot($svec);
