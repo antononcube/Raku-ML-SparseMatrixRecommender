@@ -12,7 +12,8 @@
     ],
     "build-depends": [],
     "provides": {
-        "ML::SparseMatrixRecommender": "lib/ML/SparseMatrixRecommender.rakumod"
+        "ML::SparseMatrixRecommender": "lib/ML/SparseMatrixRecommender.rakumod",
+        "ML::SparseMatrixRecommender::DocumentTermWeightish": "lib/ML/SparseMatrixRecommender/DocumentTermWeightish.rakumod"
     },
     "license": "Artistic-2.0",
     "tags": [

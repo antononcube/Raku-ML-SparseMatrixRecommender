@@ -1,9 +1,11 @@
 use v6;
 
 use Math::SparseMatrix;
+use ML::SparseMatrixRecommender::DocumentTermWeightish;
 
 ## Monadic-like definition.
-class ML::SparseMatrixRecommender {
+class ML::SparseMatrixRecommender
+        does ML::SparseMatrixRecommender::DocumentTermWeightish {
 
     ##========================================================
     ## Data members
@@ -243,7 +245,7 @@ class ML::SparseMatrixRecommender {
         unless $tag-types ~~ (Array:D | List:D | Seq:D) && $tag-types.all ~~ Str:D;
 
         $tag-types .= grep({$_ ne $item-key});
-        my %matrices = $tag-types.map(-> $type {
+        my %matrices = |$tag-types.map(-> $type {
             $type => self.create-item-tag-matrix(@data, $item-key, $type)
         });
 
@@ -274,6 +276,26 @@ class ML::SparseMatrixRecommender {
         $!M = reduce({$^a.column-bind($^b)}, %!matrices.values);
         self!file-in-items-and-tags;
 
+        return self;
+    }
+
+
+    ##========================================================
+    ## Apply LSI functions
+    ##========================================================
+    #| Apply LSI functions to the entries of the recommendation matrix.
+    multi method apply-term-weight-functions(
+            $global-weight-func is copy = Whatever, #= LSI global term weight function. One of "ColumnSum", "Entropy", "IDF", "None".
+            $local-weight-func is copy = Whatever,  #= LSI local term weight function. One of "Binary", "Log", "None".
+            $normalizer-func is copy = Whatever,    #= LSI normalizer function. One of "Cosine", "None", "RowSum".
+                                             ) {
+        %!matrices = %!matrices.kv.map(-> $k, $m {
+            $k => self.apply-term-weight-functions($m, $global-weight-func, $local-weight-func, $normalizer-func)
+        });
+
+        # Make the recommender matrix
+        $!M = reduce({$^a.column-bind($^b)}, %!matrices.values);
+        self!file-in-items-and-tags;
         return self;
     }
 
@@ -318,9 +340,7 @@ class ML::SparseMatrixRecommender {
 
         ## Normalize
         if $normalize {
-            my $max = $prof.Array.flat(:hammer).max;
-            $max = $max.abs > 0 ?? (1e0 / $max.Num) !! 1;
-            $prof.multiply($max, False);
+            $prof = self!max-normalize-sparse-matrix($prof, :abs-max);
         }
 
         ## Sort
@@ -417,9 +437,7 @@ class ML::SparseMatrixRecommender {
 
         ## Normalize
         if $normalize {
-            my $max = $rec.Array.flat(:hammer).max;
-            $max = $max.abs > 0 ?? (1e0 / $max.Num) !! 1;
-            $rec.multiply($max, False);
+            $rec = self!max-normalize-sparse-matrix($rec, :abs-max);
         }
 
         ## Sort
