@@ -29,18 +29,20 @@ $smrObj =
                 @titanic,
                 tag-types => @titanic[0].keys.grep({ $_ ne 'id' }).Array,
                 item-column-came => <id>)
+        .apply-term-weight-functions('IDF', 'None', 'Cosine')
         .echo-M()
         .echo-matrices()
-        .recommend-by-profile(@prof, 10, :normalize)
+        .recommend-by-profile(@prof, 10, :!normalize)
         .echo-value()
-        .recommend(@hist, :normalize)
+        .recommend(@hist, :!normalize)
         .echo-value();
 
 my $recs = $smrObj.take-value;
 
 say ('$recs : ', $recs.raku);
 
-my @dsRecs = $recs.map({ %(id => $_.key, score => $_.value) });
+my @dsRecs = $recs.map({ %(id => $_.key, score => $_.value) }).Array;
+.say for @dsRecs;
 my @dsView = join-across(@dsRecs, @titanic, <id>).sort({ -$_<score> });
 
 say to-pretty-table(@dsView);
