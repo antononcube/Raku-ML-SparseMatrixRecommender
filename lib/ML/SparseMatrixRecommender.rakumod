@@ -55,6 +55,37 @@ class ML::SparseMatrixRecommender {
         return $mat;
     }
 
+    method make-history-vector(
+            Mix:D $mix,
+            Bool:D :$column = False,
+            Str:D :$tag-name = 'history',
+            Bool:D :$warn = False
+                               ) {
+        # Make sure the items and tags are current
+        self!file-in-items-and-tags if %!items.elems == 0 || %!tags.elems == 0 || %!items.elems != $!M.nrow || %!tags.elems != $!M.ncol;
+
+        # Make the rules
+        my @rules = $mix.map({ (0, %!items{$_.key}) => $_.value });
+
+        if $warn {
+            note 'None of the keys of the argument are known items.' if @rules.elems == 0;
+            note 'Some of the keys of the argument are not known items.' if 0 < @rules.elems < $mix.elems;
+        }
+
+        # Make the row matrix
+        my $mat = Math::SparseMatrix.new(
+                :@rules,
+                nrow => 1,
+                ncol => $!M.nrow,
+                row-names => [$tag-name, ],
+                column-names => $!M.row-names,
+                );
+
+        if $column { $mat .= transpose }
+
+        return $mat;
+    }
+
     ##========================================================
     ## Setters
     ##========================================================
@@ -252,50 +283,53 @@ class ML::SparseMatrixRecommender {
     #| Find items profile.
     #| * C<@items> A list or a mix of items.
     #| * C<$normalize> Should the recommendation scores be normalized or not?
-    #| * C<$object> Should the result be an object or not?
     #| * C<$warn> Should warnings be issued or not?
-    multi method profile(@items, Bool :$normalize = False, Bool :$object = True, Bool :$warn = True) {
-        self.profile(Mix(@items), :$normalize, :$object, :$warn)
+    multi method profile(@items, Bool:D :$normalize = False, Bool:D :$warn = True) {
+        self.profile(Mix(@items), :$normalize, :$warn)
     }
 
-    multi method profile(Str $item, Bool :$normalize = False, Bool :$object = True, Bool :$warn = True) {
-        self.profile(Mix([$item]), :$normalize, :$object, :$warn)
+    multi method profile(Str:D $item, Bool:D :$normalize = False, Bool:D :$warn = True) {
+        self.profile(Mix([$item]), :$normalize, :$warn)
     }
 
-    multi method profile(Mix:D $items, Bool :$normalize = False, Bool :$object = True, Bool :$warn = True) {
-        #`[
-        ## Transpose inverse indexes if needed
-        if %!itemInverseIndexes.elems == 0 { self.transpose-tag-inverse-indexes() }
+    multi method profile(Mix:D $items, Bool:D :$normalize = False, Bool:D :$warn = True) {
 
-        ## Except the line above the code of this method is same/dual to .recommend-by-profile
+        # Make sure the items and tags are current
+        self!file-in-items-and-tags if %!items.elems == 0 || %!tags.elems == 0 || %!items.elems != $!M.nrow || %!tags.elems != $!M.ncol;
 
         ## Make sure items are known
-        my $itemsQuery = Mix($items{($items (&) $!knownItems).keys}:p);
+        my %itemsQuery = $items.grep({ %!items{$_.key}:exists });
 
-        if $itemsQuery.elems == 0 and $warn {
+        if %itemsQuery.elems == 0 && $warn {
             warn 'None of the items is known in the recommender.';
             self.set-value(%());
-            return $object ?? self !! self.take-value();
+            return self
         }
 
-        if $itemsQuery.elems < $items.elems and $warn {
+        if %itemsQuery.elems < $items.elems && $warn {
             warn 'Some of the items are unknown in the recommender.';
         }
 
+        # Make history vector
+        my $histVec = self.make-history-vector(%itemsQuery.Mix);
+
         ## Compute the profile
-        my %itemMix = [(+)] %!itemInverseIndexes{$itemsQuery.keys} Z<<*>> $itemsQuery.values;
+        my $prof = $histVec.dot($!M);
 
         ## Normalize
-        if $normalize { %itemMix = self.normalize(%itemMix, 'max-norm') }
+        if $normalize {
+            my $max = $prof.Array.flat(:hammer).max;
+            $max = $max.abs > 0 ?? (1e0 / $max.Num) !! 1;
+            $prof.multiply($max, False);
+        }
 
         ## Sort
-        my @res = %itemMix.sort({ -$_.value });
+        my @res = $prof.column-sums(:p).sort({ -$_.value }).map({ $_.key => $_.value });
 
         ## Result
-        self.set-value(@res);
+        $!value = @res;
 
-        return $object ?? self !! self.take-value();
-        ]
+        return self;
     }
 
     ##========================================================
@@ -305,22 +339,19 @@ class ML::SparseMatrixRecommender {
     #| * C<@items> A list or a mix of items.
     #| * C<$nrecs> Number of recommendations.
     #| * C<$normalize> Should the recommendation scores be normalized or not?
-    #| * C<$object> Should the result be an object or not?
     #| * C<$warn> Should warnings be issued or not?
-    multi method recommend(@items, Numeric:D $nrecs = 12, Bool :$normalize = False, Bool :$object = True,
-                           Bool :$warn = True) {
-        self.recommend(Mix(@items), $nrecs, :$normalize, :$object, :$warn)
+    multi method recommend(@items, Numeric:D $nrecs = 12, Bool:D :$normalize = False, Bool:D :$warn = True) {
+        self.recommend(Mix(@items), $nrecs, :$normalize, :$warn)
     }
 
-    multi method recommend($item, Numeric:D $nrecs = 12, Bool :$normalize = False, Bool :$object = True,
-                           Bool :$warn = True) {
-        self.recommend(Mix([$item]), $nrecs, :$normalize, :$object, :$warn)
+    multi method recommend($item, Numeric:D $nrecs = 12, Bool:D :$normalize = False, Bool:D :$warn = True) {
+        self.recommend(Mix([$item]), $nrecs, :$normalize, :$warn)
     }
 
-    multi method recommend(Mix:D $items, Numeric:D $nrecs = 12, Bool :$normalize = False, Bool :$object = True,
-                           Bool :$warn = True) {
-        ## It is not fast, but it is just easy to compute the profile and call recommend-by-profile.
-        #self.recommend-by-profile(Mix(self.profile($items):!object), $nrecs, :$normalize, :$object, :$warn)
+    multi method recommend(Mix:D $items, Numeric:D $nrecs = 12, Bool :$normalize = False, Bool :$warn = True) {
+        # It can be made faster using a history vector,
+        # but it is just easy to compute the profile first and then call recommend-by-profile.
+        self.recommend-by-profile(self.profile($items).take-value, $nrecs, :$normalize, :$warn)
     }
 
     ##========================================================
@@ -350,11 +381,14 @@ class ML::SparseMatrixRecommender {
 
     multi method recommend-by-profile(Mix:D $prof,
                                       Numeric:D $nrecs is copy = 12,
-                                      Bool :$normalize = False,
-                                      Bool :$warn = True) {
+                                      Bool:D :$normalize = False,
+                                      Bool:D :$warn = True) {
+
+        # Make sure the items and tags are current
+        self!file-in-items-and-tags if %!items.elems == 0 || %!tags.elems == 0 || %!items.elems != $!M.nrow || %!tags.elems != $!M.ncol;
 
         ## Make sure tags are known
-        my %profQuery = $prof.grep({ $_.key ∈ $!M.column-names });
+        my %profQuery = $prof.grep({ %!tags{$_.key}:exists });
 
         if %profQuery.elems == 0 && $warn {
             warn 'None of the profile tags is known in the recommender.';
@@ -362,7 +396,7 @@ class ML::SparseMatrixRecommender {
             return self;
         }
 
-        if %profQuery.elems < $prof.elems and $warn {
+        if 0 < %profQuery.elems < $prof.elems && $warn {
             warn 'Some of the profile tags are unknown in the recommender.';
         }
 
@@ -382,11 +416,13 @@ class ML::SparseMatrixRecommender {
         my $rec = $!M.dot($svec);
 
         ## Normalize
-        # TBD
-        #if $normalize { %profMix = self.normalize(%profMix, 'max-norm') }
+        if $normalize {
+            my $max = $rec.Array.flat(:hammer).max;
+            $max = $max.abs > 0 ?? (1e0 / $max.Num) !! 1;
+            $rec.multiply($max, False);
+        }
 
         ## Sort
-        # TBD
         my @res = $rec.row-sums(:p).sort({ -$_.value }).map({ $_.key => $_.value });
 
         ## Result
