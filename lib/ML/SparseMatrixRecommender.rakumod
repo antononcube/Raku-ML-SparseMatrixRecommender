@@ -368,8 +368,8 @@ class ML::SparseMatrixRecommender {
 
         $nrecs = round($nrecs);
 
-        if $nrecs < 0 {
-            warn 'The second argument is expected to be a positive integer or Inf';
+        if $nrecs <= 0 {
+            note 'The second argument is expected to be a positive integer or Inf.';
             self.set-value(%());
             return self;
         }
