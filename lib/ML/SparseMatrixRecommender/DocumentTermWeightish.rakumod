@@ -22,18 +22,18 @@ role ML::SparseMatrixRecommender::DocumentTermWeightish {
 
         given $func.lc {
             when $_ eq 'idf' {
-                $mat.unitize;
+                $mat.core-matrix.unitize(:!clone);
                 my @global-weights = $mat.column-sums;
                 return @global-weights.map({ $_ > 0 ?? log($mat.rows-count / $_, 2) !! 1 });
             }
             when $_ ∈ <idf-smooth idf_smooth idfsmooth> {
-                $mat.unitize;
+                $mat.core-matrix.unitize(:!clone);
                 my @global-weights = $mat.column-sums;
                 return @global-weights.map({ log($mat.rows-count / (1 + $_), 2) + 1 });
             }
             when $_ eq 'gfidf' {
                 my @freq-sums = $mat.column-sums;
-                $mat.unitize;
+                $mat.core-matrix.unitize(:!clone);
                 my @global-weights = $mat.column-sums;
                 @global-weights = @global-weights.map({ $_ == 0 ?? 1 !! $_ });
                 return @freq-sums Z/ @global-weights;
@@ -47,7 +47,7 @@ role ML::SparseMatrixRecommender::DocumentTermWeightish {
                 return (1 xx $mat.columns-count);
             }
             when $_ ∈ <columnstochastic column-stochastic sum> {
-                $mat.unitize;
+                $mat.core-matrix.unitize(:!clone);
                 my @global-weights = $mat.column-sums;
                 @global-weights = @global-weights.map({ $_ == 0 ?? 1 !! $_ });
                 return @global-weights.map({ 1 / $_ });
@@ -61,10 +61,10 @@ role ML::SparseMatrixRecommender::DocumentTermWeightish {
         }
     }
     
-    multi method apply-term-weight-functions($doc-term-matrix,
-                                             $global-weight-func is copy = Whatever,
-                                             $local-weight-func is copy = Whatever,
-                                             $normalizer-func is copy = Whatever) {
+    method apply-lsi-weight-functions($doc-term-matrix,
+                                      $global-weight-func is copy = Whatever,
+                                      $local-weight-func is copy = Whatever,
+                                      $normalizer-func is copy = Whatever) {
         die 'The argument $doc-term-matrix is expected to be a Math::SparseMatrix object.'
         unless $doc-term-matrix ~~ Math::SparseMatrix:D;
 
@@ -107,20 +107,22 @@ role ML::SparseMatrixRecommender::DocumentTermWeightish {
 
         given $normalizer-func.lc {
             when $_ eq "cosine" {
-                my @svec = $mat.multiply($mat).row-sums.map({ sqrt($_) });
-                @svec = @svec.map({ $_ == 0 ?? 1 !! 1 / $_ });
-                $diag-mat = Math::SparseMatrix.new(diagonals => [@svec], offsets => [0], row-names => $mat.row-names, column-names => $mat.row-names);
+                my @svec = $mat.multiply($mat, :clone).row-sums.map({ sqrt($_) });
+                @svec = @svec.map({ $_ == 0 ?? 1.0 !! (1.0 / $_) });
+                my @rules = @svec.kv.map( -> $i, $v { ($i, $i) => $v });
+                my $diag-mat = Math::SparseMatrix.new(:@rules, row-names => $mat.row-names, column-names => $mat.row-names);
                 $mat = $diag-mat.dot($mat);
             }
             when $_ ∈ <sum rowstochastic> {
                 my @svec = $mat.row-sums;
-                @svec = @svec.map({ $_ == 0 ?? 1 !! 1 / $_ });
-                $diag-mat = Math::SparseMatrix.new(diagonals => [@svec], offsets => [0], row-names => $mat.row-names, column-names => $mat.row-names);
+                @svec = @svec.map({ $_ == 0 ?? 1.0 !! (1.0 / $_) });
+                my @rules = @svec.kv.map( -> $i, $v { ($i, $i) => $v });
+                my $diag-mat = Math::SparseMatrix.new(:@rules, row-names => $mat.row-names, column-names => $mat.row-names);
                 $mat = $diag-mat.dot($mat);
             }
             when $_ ∈ <max maximum> {
-                my $smat = self.max-normalize-sparse-matrix($mat.core-matrix, False);
-                $mat.set-sparse-matrix($smat);
+                my $smat = self.max-normalize-sparse-matrix($mat, False);
+                #$mat.set-sparse-matrix($smat);
             }
             when $_ ∈ <absmax absmaximum> {
                 my $smat = self.max-normalize-sparse-matrix($mat.core-matrix, True);
