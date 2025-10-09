@@ -15,18 +15,59 @@ class ML::SparseMatrixRecommender {
     has $!value = Whatever;
 
     ##========================================================
+    ## Performance
+    ##========================================================
+    has %!items = %();
+    has %!tags = %();
+
+    method !file-in-items-and-tags() {
+        %!items = $!M.row-names Z=> (^$!M.nrow);
+        %!tags = $!M.column-names Z=> (^$!M.ncol);
+    }
+
+    method make-profile-vector(
+            Mix:D $mix,
+            Bool:D :$column = True,
+            Str:D :$item-name = 'profile',
+            Bool:D :$warn = False
+                               ) {
+        # Make sure the items and tags are current
+        self!file-in-items-and-tags if %!items.elems == 0 || %!tags.elems == 0 || %!items.elems != $!M.nrow || %!tags.elems != $!M.ncol;
+
+        # Make the rules
+        my @rules = $mix.map({ (%!tags{$_.key}, 0) => $_.value });
+
+        if $warn {
+            note 'None of the keys of the argument are known tags.' if @rules.elems == 0;
+            note 'Some of the keys of the argument are not known tags.' if 0 < @rules.elems < $mix.elems;
+        }
+
+        # Make the column matrix
+        my $mat = Math::SparseMatrix.new(
+                    :@rules,
+                    nrow => $!M.ncol,
+                    ncol => 1,
+                    row-names => $!M.column-names,
+                    column-names => [$item-name, ]);
+
+        if !$column { $mat .= transpose }
+
+        return $mat;
+    }
+
+    ##========================================================
     ## Setters
     ##========================================================
-    method set-smr-matrix(Math::SparseMatrix:D $m) {
-        self.m = $m;
-        self
+    method set-smr-matrix($m) {
+        return self.set-M($m);
     }
 
     #| Set recommendation matrix.
     method set-M($arg) {
-        die "The first argument is expected to be a SSparseMatrix object."
+        die "The first argument is expected to be a Math::SparseMatrix object."
         unless $arg ~~ Math::SparseMatrix:D;
         $!M = $arg.clone;
+        self!file-in-items-and-tags;
         return self;
     }
 
@@ -200,6 +241,7 @@ class ML::SparseMatrixRecommender {
 
         # Make the recommender matrix
         $!M = reduce({$^a.column-bind($^b)}, %!matrices.values);
+        self!file-in-items-and-tags;
 
         return self;
     }
@@ -332,17 +374,8 @@ class ML::SparseMatrixRecommender {
             return self;
         }
 
-        say (:%profQuery);
-
         ## Make the sparse matrix/vector for the profile
-        my $svec = Math::SparseMatrix.new(
-                dense-matrix => %profQuery.values.map({ [$_, ]}).Array,
-                nrow => %profQuery.elems,
-                ncol => 1,
-                row-names => %profQuery.keys,
-                column-names => ['prof', ]);
-        $svec.print;
-        $svec .= impose-row-names($!M.column-names);
+        my $svec = self.make-profile-vector(%profQuery.Mix);
         say (:$svec);
 
         ## Compute recommendations
