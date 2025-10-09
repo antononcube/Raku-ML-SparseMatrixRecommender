@@ -1,6 +1,6 @@
 #!/usr/bin/env perl6
 
-#use lib <. lib>;
+use lib <. lib>;
 use ML::SparseMatrixRecommender;
 
 use Data::Reshapers;
@@ -10,7 +10,7 @@ use Math::SparseMatrix::Utilities;
 
 ##===========================================================
 my Hash @titanic = Data::Reshapers::get-titanic-dataset(headers => 'auto');
-@titanic .= map({ $_<passengerAge> = $_<passengerAge>.Int; $_ });
+#@titanic .= map({ $_<passengerAge> = $_<passengerAge>.Int; $_ });
 
 .say for @titanic.roll(4);
 
@@ -19,6 +19,7 @@ records-summary(@titanic);
 say @titanic[0].keys.grep({ $_ ne 'id' });
 
 my @prof = "passengerClass:1st", "passengerSex:male", "passengerSurvival:survived";
+my @hist = <233 272>;
 
 my ML::SparseMatrixRecommender $smrObj .= new;
 
@@ -30,7 +31,10 @@ $smrObj =
                 item-column-came => <id>)
         .echo-M()
         .echo-matrices()
-        .recommend-by-profile(@prof, 10);
+        .recommend-by-profile(@prof, 10, :normalize)
+        .echo-value()
+        .recommend(@hist, :normalize)
+        .echo-value();
 
 my $recs = $smrObj.take-value;
 
