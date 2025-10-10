@@ -22,18 +22,18 @@ role ML::SparseMatrixRecommender::DocumentTermWeightish {
 
         given $func.lc {
             when $_ eq 'idf' {
-                $mat.core-matrix.unitize(:!clone);
+                $mat.unitize(:!clone);
                 my @global-weights = $mat.column-sums;
                 return @global-weights.map({ $_ > 0 ?? log($mat.rows-count / $_, 2) !! 1 });
             }
             when $_ ∈ <idf-smooth idf_smooth idfsmooth> {
-                $mat.core-matrix.unitize(:!clone);
+                $mat.unitize(:!clone);
                 my @global-weights = $mat.column-sums;
                 return @global-weights.map({ log($mat.rows-count / (1 + $_), 2) + 1 });
             }
             when $_ eq 'gfidf' {
                 my @freq-sums = $mat.column-sums;
-                $mat.core-matrix.unitize(:!clone);
+                $mat.unitize(:!clone);
                 my @global-weights = $mat.column-sums;
                 @global-weights = @global-weights.map({ $_ == 0 ?? 1 !! $_ });
                 return @freq-sums Z/ @global-weights;
@@ -47,7 +47,7 @@ role ML::SparseMatrixRecommender::DocumentTermWeightish {
                 return (1 xx $mat.columns-count);
             }
             when $_ ∈ <columnstochastic column-stochastic sum> {
-                $mat.core-matrix.unitize(:!clone);
+                $mat.unitize(:!clone);
                 my @global-weights = $mat.column-sums;
                 @global-weights = @global-weights.map({ $_ == 0 ?? 1 !! $_ });
                 return @global-weights.map({ 1 / $_ });
