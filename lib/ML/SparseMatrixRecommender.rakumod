@@ -371,16 +371,37 @@ class ML::SparseMatrixRecommender
     #| * C<@items> A list or a mix of items.
     #| * C<$nrecs> Number of recommendations.
     #| * C<$normalize> Should the recommendation scores be normalized or not?
+    #| * C<$remove-history> Should the history be removed from the result recommendations or not??
     #| * C<$warn> Should warnings be issued or not?
-    multi method recommend(@items, Numeric:D $nrecs = 12, Bool:D :$normalize = False, Bool:D :$warn = True) {
-        self.recommend(Mix(@items), $nrecs, :$normalize, :$warn)
+    multi method recommend(@items,
+                           Numeric:D $nrecs = 12,
+                           Bool:D :$normalize = False,
+                           Bool:D :$remove-history = True,
+                           Bool:D :$warn = True) {
+        self.recommend(Mix(@items), $nrecs, :$normalize, :$remove-history, :$warn)
     }
 
-    multi method recommend($item, Numeric:D $nrecs = 12, Bool:D :$normalize = False, Bool:D :$warn = True) {
-        self.recommend(Mix([$item]), $nrecs, :$normalize, :$warn)
+    multi method recommend(%items where * ~~ Map:D,
+                           Numeric:D $nrecs = 12,
+                           Bool:D :$normalize = False,
+                           Bool:D :$remove-history = True,
+                           Bool:D :$warn = True) {
+        self.recommend(%items.Mix, $nrecs, :$normalize, :$remove-history, :$warn)
     }
 
-    multi method recommend(Mix:D $items, Numeric:D $nrecs = 12, Bool :$normalize = False, Bool :$warn = True) {
+    multi method recommend($item,
+                           Numeric:D $nrecs = 12,
+                           Bool:D :$normalize = False,
+                           Bool:D :$remove-history = True,
+                           Bool:D :$warn = True) {
+        self.recommend(Mix([$item]), $nrecs, :$normalize, :$remove-history, :$warn)
+    }
+
+    multi method recommend(Mix:D $items,
+                           Numeric:D $nrecs = 12,
+                           Bool:D :$normalize = False,
+                           Bool:D :$remove-history = True,
+                           Bool:D :$warn = True) {
         # It can be made faster using a history vector,
         # but it is just easy to compute the profile first and then call recommend-by-profile.
         self.recommend-by-profile(self.profile($items).take-value, $nrecs, :$normalize, :$warn)
