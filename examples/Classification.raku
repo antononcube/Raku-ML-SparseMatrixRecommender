@@ -1,20 +1,17 @@
 #!/usr/bin/env perl6
 
 use ML::SparseMatrixRecommender;
-use Data::Importers;
+use ML::SparseMatrixRecommender::Utilities;
 use Data::Summarizers;
 
 ##===========================================================
 
 # Using a dataset from "the web"
-my @titanic = data-import("https://raw.githubusercontent.com/antononcube/MathematicaVsR/refs/heads/master/Data/MathematicaVsR-Data-Titanic.csv", headers => 'auto');
+my @titanic = ML::SparseMatrixRecommender::Utilities::get-titanic-dataset;
 @titanic .= map({ $_<passengerAge> = $_<passengerAge>.Int; $_ });
 
-.say for @titanic.roll(4);
-
+say "Dataset summary:";
 records-summary(@titanic);
-
-say @titanic[0].keys.grep({ $_ ne 'id' });
 
 my @prof = "passengerClass:1st", "passengerSex:male", "passengerSurvival:survived";
 my @hist = <87 101>;
@@ -23,16 +20,18 @@ my ML::SparseMatrixRecommender $smrObj .= new;
 
 $smrObj =
         $smrObj
-        .create-from-wide-form(
-                @titanic,
-                tag-types => @titanic[0].keys.grep({ $_ ne 'id' }).Array,
-                item-column-came => <id>)
+        .create-from-wide-form(@titanic, item-column-came => <id>, tag-types => Whatever)
         .apply-term-weight-functions('IDF', 'None', 'Cosine');
 
+say (:$smrObj);
+
+# Profile to classify with
 my @prof2 = "passengerClass:1st", "passengerSex:male";
+
+# Classification
 $smrObj =
         $smrObj
-        .classify-by-profile('passengerSurvival', @prof2, n-top-nearest-neighbors => 100)
+        .classify-by-profile('passengerSurvival', @prof2, n-top-nearest-neighbors => 50, :normalize)
         .echo-value('classification result: ', with => &note);
 
 
