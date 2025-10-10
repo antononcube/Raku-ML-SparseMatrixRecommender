@@ -386,38 +386,76 @@ class ML::SparseMatrixRecommender
     #| * C<$normalize> Should the recommendation scores be normalized or not?
     #| * C<$remove-history> Should the history be removed from the result recommendations or not??
     #| * C<$warn> Should warnings be issued or not?
-    multi method recommend(@items,
-                           Numeric:D $nrecs = 12,
-                           Bool:D :$normalize = False,
-                           Bool:D :$remove-history = True,
-                           Bool:D :$warn = True) {
-        self.recommend(Mix(@items), $nrecs, :$normalize, :$remove-history, :$warn)
-    }
+    method recommend($items is copy,
+                     Numeric:D $nrecs is copy = 12,
+                     Bool:D :$normalize = False,
+                     Bool:D :$remove-history = True,
+                     Bool:D :$vector-result = False,
+                     Bool:D :$warn = True) {
 
-    multi method recommend(%items where * ~~ Map:D,
-                           Numeric:D $nrecs = 12,
-                           Bool:D :$normalize = False,
-                           Bool:D :$remove-history = True,
-                           Bool:D :$warn = True) {
-        self.recommend(%items.Mix, $nrecs, :$normalize, :$remove-history, :$warn)
-    }
+        # Process $items
+        $items = do given $items {
+            when $_ ~~ Str:D { [$_, ].Mix}
+            when $_ ~~ (Array:D | List:D | Seq:D) && $_.all ~~ Str:D {$_.Mix}
+            when $_ ~~ Map:D {$_.Mix}
+            when $_ ~~ Mix:D || $_ ~~ Math::SparseMatrix:D {
+                # Do nothing
+            }
+            default {
+                die 'Do not know how to process the first arugment.'
+            }
+        }
 
-    multi method recommend($item,
-                           Numeric:D $nrecs = 12,
-                           Bool:D :$normalize = False,
-                           Bool:D :$remove-history = True,
-                           Bool:D :$warn = True) {
-        self.recommend(Mix([$item]), $nrecs, :$normalize, :$remove-history, :$warn)
-    }
+        # Make a vector of items
+        my $vec = $items ~~ Mix:D ?? self.make-history-vector($items) !! $items;
 
-    multi method recommend(Mix:D $items,
-                           Numeric:D $nrecs = 12,
-                           Bool:D :$normalize = False,
-                           Bool:D :$remove-history = True,
-                           Bool:D :$warn = True) {
-        # It can be made faster using a history vector,
-        # but it is just easy to compute the profile first and then call recommend-by-profile.
-        self.recommend-by-profile(self.profile($items).take-value, $nrecs, :$normalize, :$warn)
+        die "If the first argument is a sparse matrix object then it is expected to be with dimensions (1, {self.take-M.rows-count})."
+        unless $vec.rows-count == 1 && $vec.columns-count == self.take-M.rows-count;
+
+        # Compute recommendations
+        my $rec = self.take-M.dot($vec.dot(self.take-M).transpose(:!clone));
+
+        if $remove-history {
+            my $hist0 = $vec.unitize(:clone).transpose.multiply(0);
+            $hist0.implicit-value = 1;
+            $rec = $rec.multiply($hist0)
+        }
+
+        $nrecs = round($nrecs);
+
+        if $nrecs <= 0 {
+            note 'The second argument is expected to be a positive integer or Inf.';
+            self.set-value(%());
+            return self;
+        }
+
+        ### Basically the same as the end of .recommend-by-profile()
+        # Normalize
+        if $normalize {
+            $rec = self!max-normalize-sparse-matrix($rec, :abs-max);
+        }
+
+        # Vector result
+        if $vector-result {
+
+            if $nrecs < $rec.rows-count {
+                my %recs2 = $rec.row-sums(:p);
+                my @recs2 = %recs2.grep(*.value > 0).sort(-*.value)>>.key[^$nrecs];
+                $rec = $rec[@recs2;*].impose-row-names($rec.row-names);
+            }
+
+        } else {
+            ## Sort
+            my @res = $rec.row-sums(:p).sort({ -$_.value }).map({ $_.key => $_.value });
+
+            ## Result
+            $rec = @res.head(min($nrecs, @res.elems)).Array;
+        }
+
+        # Assign obtained recommendations to the pipeline value
+        $!value = $rec;
+
+        return self;
     }
 
     ##========================================================
