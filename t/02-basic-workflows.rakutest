@@ -1,0 +1,89 @@
+use Test;
+use ML::SparseMatrixRecommender;
+use Data::Reshapers;
+use Math::SparseMatrix;
+
+
+#----------------------------------------------------------
+# Tested in 01-creation.rakutest
+#----------------------------------------------------------
+my $dsData = Data::Reshapers::get-titanic-dataset(headers => 'auto');
+$dsData = $dsData.map({ $_<id> = "id.{$_<id>}"; $_});
+
+my $smr =
+        ML::SparseMatrixRecommender
+                .new
+                .create-from-wide-form(
+                    $dsData,
+                    item-column-name => 'id',
+                    tag-types => Whatever,
+                    :add-tag-types-to-column-names
+                )
+                .apply-term-weight-functions(
+                    global-weight-func => "IDF",
+                    local-weight-func  => "None",
+                    normalizer-func    => "Cosine"
+                );
+#----------------------------------------------------------
+
+## 1
+subtest {
+    isa-ok $smr, ML::SparseMatrixRecommender:D;
+    isa-ok $smr.take-M, Math::SparseMatrix:D;
+    is $smr.take-M.rows-count > 1300, True;
+    is $smr.take-M.columns-count >= 13, True;
+}, 'expected SMR object';
+
+## 2
+subtest {
+    my @hist = <id.1 id.14 id.33>;
+    isa-ok $smr.profile(@hist).take-value, Array:D;
+    my $prof= $smr.profile(@hist).take-value;
+    is $prof.all ~~ Pair:D, True;
+    is $prof>>.key.all ~~ Str:D, True;
+    is $prof>>.value.all ~~ Numeric:D, True;
+}, 'expected profile object -- list-of-ids history';
+
+
+## 3
+subtest {
+    my %hist = <id.1 id.14 id.33> Z=> [1, 2, 1];
+    isa-ok $smr.profile(%hist.Mix).take-value, Array:D;
+    isa-ok $smr.profile(%hist).take-value, Array:D;
+    my $prof= $smr.profile(%hist).take-value;
+    is $prof.all ~~ Pair:D, True;
+    is $prof>>.key.all ~~ Str:D, True;
+    is $prof>>.value.all ~~ Numeric:D, True;
+}, 'expected profile object -- scored history';
+
+## 4
+subtest {
+    my @hist = <id.1 id.14 id.33>;
+    isa-ok $smr.recommend(@hist).take-value, Array:D;
+    my $prof= $smr.recommend(@hist).take-value;
+    is $prof.all ~~ Pair:D, True;
+    is $prof>>.key.all ~~ Str:D, True;
+    is $prof>>.value.all ~~ Numeric:D, True;
+}, 'expected recommend by history object -- list-of-ids history';
+
+## 5
+subtest {
+    my @prof = "passengerClass:1st", "passengerSex:male";
+    isa-ok $smr.recommend-by-profile(@prof).take-value, Array:D;
+    my $prof= $smr.recommend-by-profile(@prof).take-value;
+    is $prof.all ~~ Pair:D, True;
+    is $prof>>.key.all ~~ Str:D, True;
+    is $prof>>.value.all ~~ Numeric:D, True;
+}, 'expected recommend by profile object -- list-of-ids history';
+
+## 5
+subtest {
+    my %prof = "passengerClass:1st" => 1.2, "passengerSex:male" => 1.4;
+    isa-ok $smr.recommend-by-profile(%prof).take-value, Array:D;
+    my $prof= $smr.recommend-by-profile(%prof).take-value;
+    is $prof.all ~~ Pair:D, True;
+    is $prof>>.key.all ~~ Str:D, True;
+    is $prof>>.value.all ~~ Numeric:D, True;
+}, 'expected recommend by profile object -- scored history';
+
+done-testing;
