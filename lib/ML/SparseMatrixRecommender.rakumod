@@ -352,7 +352,7 @@ class ML::SparseMatrixRecommender
         }
 
         ## Sort
-        my @res = $prof.column-sums(:p).sort({ -$_.value }).map({ $_.key => $_.value });
+        my @res = $prof.column-sums(:p).grep(*.value > 0).sort({ -$_.value }).map({ $_.key => $_.value });
 
         ## Result
         $!value = @res;
@@ -393,23 +393,24 @@ class ML::SparseMatrixRecommender
     #| * C<$warn> Should warnings be issued or not?
     multi method recommend-by-profile(@prof,
                                       Numeric:D $nrecs = 12,
-                                      Bool :$normalize = False,
-                                      Bool :$object = True,
-                                      Bool :$warn = True) {
-        self.recommend-by-profile(Mix(@prof), $nrecs, :$normalize, :$object, :$warn)
+                                      Bool:D :$normalize = False,
+                                      Bool:D :$vector-result = False,
+                                      Bool:D :$warn = True) {
+        self.recommend-by-profile(Mix(@prof), $nrecs, :$normalize, :$vector-result, :$warn)
     }
 
     multi method recommend-by-profile(Str $profTag,
                                       Numeric:D $nrecs = 12,
-                                      Bool :$normalize = False,
-                                      Bool :$object = True,
-                                      Bool :$warn = True) {
-        self.recommend-by-profile(Mix([$profTag]), $nrecs, :$normalize, :$object, :$warn)
+                                      Bool:D :$normalize = False,
+                                      Bool:D :$vector-result = False,
+                                      Bool:D :$warn = True) {
+        self.recommend-by-profile(Mix([$profTag]), $nrecs, :$normalize, :$vector-result, :$warn)
     }
 
     multi method recommend-by-profile(Mix:D $prof,
                                       Numeric:D $nrecs is copy = 12,
                                       Bool:D :$normalize = False,
+                                      Bool:D :$vector-result = False,
                                       Bool:D :$warn = True) {
 
         # Make sure the items and tags are current
@@ -437,7 +438,7 @@ class ML::SparseMatrixRecommender
         }
 
         ## Make the sparse matrix/vector for the profile
-        my $svec = self.make-profile-vector(%profQuery.Mix);
+        my $svec = self.make-profile-vector(%profQuery.Mix, :$warn);
 
         ## Compute recommendations
         my $rec = $!M.dot($svec);
@@ -447,11 +448,25 @@ class ML::SparseMatrixRecommender
             $rec = self!max-normalize-sparse-matrix($rec, :abs-max);
         }
 
-        ## Sort
-        my @res = $rec.row-sums(:p).sort({ -$_.value }).map({ $_.key => $_.value });
+        # Vector result
+        if $vector-result {
 
-        ## Result
-        $!value = @res.head(min($nrecs, @res.elems));
+            if $nrecs < $rec.rows-count {
+                my %recs2 = $rec.row-sums(:p);
+                my @recs2 = %recs2.sort(-*.value)>>.key[^$nrecs];
+                $rec = $rec[@recs2;*].impose-row-names($rec.row-names);
+            }
+
+        } else {
+            ## Sort
+            my @res = $rec.row-sums(:p).sort({ -$_.value }).map({ $_.key => $_.value });
+
+            ## Result
+            $rec = @res.head(min($nrecs, @res.elems));
+        }
+
+        # Assign obtained recommendations to the pipeline value
+        $!value = $rec;
 
         return self;
     }
@@ -459,7 +474,7 @@ class ML::SparseMatrixRecommender
     ##========================================================
     ## Filter by profile
     ##========================================================
-    #| Filter items by profile
+    #| Filter items by profile.
     #| * C<$prof> A profile specification used to filter with.
     #| * C<$type> The type of filtering one of "union" or "intersection".
     #| * C<$object> Should the result be an object or not?
@@ -475,29 +490,27 @@ class ML::SparseMatrixRecommender
                                    Str :$type = 'intersection',
                                    Bool :$object = True,
                                    Bool :$warn = True) {
-        note "Filter by matrix is not implemented yet.";
-        return self;
-        #`[
         my %profMix;
         if $type.lc eq 'intersection' {
-
-            %profMix = [(&)] %!tagInverseIndexes{@prof};
+            my $profileVec = self.make-profile-vector(@prof.Mix);
+            my %sVec = self.take-M.unitize(:clone).dot($profileVec).row-sums(:pairs);
+            my $n = $profileVec.column-sums.head;
+            %profMix = %sVec.grep({ $_.value >= $n });
 
         } elsif $type.lc eq 'union' {
 
-            %profMix = [(|)] %!tagInverseIndexes{@prof};
+            %profMix = self.recommend-by-profile(@prof).take-value
 
         } else {
-            warn 'The value of the type argument is expected to be one of \'intersection\' or \'union\'.' if $warn;
+            note 'The value of the type argument is expected to be one of \'intersection\' or \'union\'.' if $warn;
             self.set-value(%());
-            return $object ?? self !! self.take-value();
+            return self;
         }
 
         ## Result
-        self.set-value(%profMix.keys.Array);
+        self.set-value(%profMix.keys.List);
 
-        return $object ?? self !! self.take-value();
-       ]
+        return self;
     }
 
     ##========================================================
@@ -522,22 +535,77 @@ class ML::SparseMatrixRecommender
         return self.classify-by-profile($tagType, %(@profile X=> 1.0).Mix, |%args);
     }
 
-    multi method classify-by-profile(Str $tagType,
+    multi method classify-by-profile(Str:D $tag-type,
                                      Mix:D $profile,
-                                     UInt :$n-top-nearest-neighbors = 100,
-                                     Bool :$voting = False,
-                                     Bool :$drop-zero-scored-labels = True,
+                                     UInt:D :$n-top-nearest-neighbors = 100,
+                                     Bool:D :$voting = False,
+                                     Bool:D :$drop-zero-scored-labels = True,
                                      :$max-number-of-labels = Whatever,
-                                     Bool :$normalize = True,
-                                     Bool :$ignore-unknown = False,
-                                     Bool :$object = True) {
+                                     Bool:D :$normalize = True,
+                                     Bool:D :$warn = False) {
 
         # Verify tag_type
-        if %!matrices{$tagType}:!exists {
-            die "The value of the first argument $tagType is not a known tag type.";
+        unless $tag-type ∈ self.take-matrices.keys {
+            die "The value of the first argument is not a known tag type.";
         }
 
-        note "Classify by profile is not implemented yet.";
+        # Compute the recommendations
+        my $recs = self.recommend-by-profile(
+                $profile,
+                $n-top-nearest-neighbors,
+                vector-result => True,
+                :$warn
+                ).take-value;
+
+        # "Nothing" result
+        if $recs.column-sums.head== 0 {
+            self.set-value(%());
+            return self;
+        }
+
+        # Get the tag type matrix
+        my $mat-tag-type = self.take-matrices{$tag-type}.clone;
+
+        # Transpose in place
+        $recs = $recs.transpose;
+
+        # Respect voting
+        if $voting {
+            $recs.unitize(:!clone);
+        }
+
+        say (:$recs);
+
+        # Get scores
+        my $cl-res = $recs.dot($mat-tag-type);
+
+        # Convert to dictionary
+        $cl-res = $cl-res.column-sums(:pairs);
+
+        # Drop zero scored labels
+        if $drop-zero-scored-labels {
+            $cl-res = $cl-res.grep({ .value > 0 }).Hash;
+        }
+
+        # Normalize
+        if $normalize {
+            my $cl-max = $cl-res.values.max;
+            if $cl-max > 0 {
+                $cl-res = $cl-res.map({ .key => .value / $cl-max }).Hash;
+            }
+        }
+
+        # Reverse sort
+        $cl-res = $cl-res.sort({ -$_.value });
+
+        # Pick max-top labels
+        if $max-number-of-labels && $max-number-of-labels < $cl-res.elems {
+            $cl-res = $cl-res.List[^$max-number-of-labels].Hash;
+        }
+
+        # Result
+        self.set-value($cl-res);
+
         return self;
     }
 
