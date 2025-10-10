@@ -453,7 +453,7 @@ class ML::SparseMatrixRecommender
 
             if $nrecs < $rec.rows-count {
                 my %recs2 = $rec.row-sums(:p);
-                my @recs2 = %recs2.sort(-*.value)>>.key[^$nrecs];
+                my @recs2 = %recs2.grep(*.value > 0).sort(-*.value)>>.key[^$nrecs];
                 $rec = $rec[@recs2;*].impose-row-names($rec.row-names);
             }
 
@@ -573,8 +573,6 @@ class ML::SparseMatrixRecommender
         if $voting {
             $recs.unitize(:!clone);
         }
-
-        say (:$recs);
 
         # Get scores
         my $cl-res = $recs.dot($mat-tag-type);
