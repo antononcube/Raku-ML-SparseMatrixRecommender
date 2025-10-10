@@ -221,8 +221,19 @@ class ML::SparseMatrixRecommender
     ##========================================================
     ## Creation methods
     ##========================================================
-    method create-item-tag-matrix(@data where @data.all ~~ Map:D, Str:D $item-key, Str:D $tag-key --> Math::SparseMatrix:D) {
-        my @edge-dataset = @data.map({ %( :from($_{$item-key}), :to($tag-key ~ ":" ~ $_{$tag-key}), :weight(1) ) });
+    method create-item-tag-matrix(
+            @data where @data.all ~~ Map:D,
+            Str:D $item-key,
+            Str:D $tag-key,
+            Bool:D :$add-tag-types-to-column-names = True,
+            Str:D :$tag-value-separator = ':'
+            --> Math::SparseMatrix:D) {
+        my @edge-dataset =
+                do if $add-tag-types-to-column-names {
+                    @data.map({ %( :from($_{$item-key}), :to($tag-key ~ $tag-value-separator ~ $_{$tag-key}), :weight(1) ) })
+                } else {
+                    @data.map({ %( :from($_{$item-key}), :to($_{$tag-key}), :weight(1) ) })
+                }
         return Math::SparseMatrix.new(:@edge-dataset):directed;
     }
 
@@ -230,6 +241,8 @@ class ML::SparseMatrixRecommender
             @data where @data.all ~~ Map:D,
             :$tag-types is copy = Whatever,
             :item-column-name(:$item-key) is copy = Whatever,
+            Bool:D :$add-tag-types-to-column-names = True,
+            Str:D :$tag-value-separator = ':',
             *%extra) {
         if $item-key.isa(Whatever) {
             $item-key = @data.head.keys.first({ $_ ~~ /:i id/ });
@@ -246,7 +259,7 @@ class ML::SparseMatrixRecommender
 
         $tag-types .= grep({$_ ne $item-key});
         my %matrices = |$tag-types.map(-> $type {
-            $type => self.create-item-tag-matrix(@data, $item-key, $type)
+            $type => self.create-item-tag-matrix(@data, $item-key, $type, :$add-tag-types-to-column-names, :$tag-value-separator)
         });
 
         return self.create-from-matrices(%matrices, |%extra);
@@ -314,19 +327,19 @@ class ML::SparseMatrixRecommender
     #| * C<@items> A list or a mix of items.
     #| * C<$normalize> Should the recommendation scores be normalized or not?
     #| * C<$warn> Should warnings be issued or not?
-    multi method profile(@items, Bool:D :$normalize = False, Bool:D :$warn = True) {
+    multi method profile(@items, Bool:D :$normalize = True, Bool:D :$warn = True) {
         self.profile(Mix(@items), :$normalize, :$warn)
     }
 
-    multi method profile(Str:D $item, Bool:D :$normalize = False, Bool:D :$warn = True) {
+    multi method profile(Str:D $item, Bool:D :$normalize = True, Bool:D :$warn = True) {
         self.profile(Mix([$item]), :$normalize, :$warn)
     }
 
-    multi method profile($items where * ~~ Map:D, Bool:D :$normalize = False, Bool:D :$warn = True) {
+    multi method profile($items where * ~~ Map:D, Bool:D :$normalize = True, Bool:D :$warn = True) {
         self.profile($items.Mix, :$normalize, :$warn)
     }
 
-    multi method profile(Mix:D $items, Bool:D :$normalize = False, Bool:D :$warn = True) {
+    multi method profile(Mix:D $items, Bool:D :$normalize = True, Bool:D :$warn = True) {
 
         # Make sure the items and tags are current
         self!file-in-items-and-tags if %!items.elems == 0 || %!tags.elems == 0 || %!items.elems != $!M.nrow || %!tags.elems != $!M.ncol;
@@ -418,7 +431,7 @@ class ML::SparseMatrixRecommender
     #| * C<$warn> Should warnings be issued or not?
     multi method recommend-by-profile(@prof,
                                       Numeric:D $nrecs = 12,
-                                      Bool:D :$normalize = False,
+                                      Bool:D :$normalize = True,
                                       Bool:D :$vector-result = False,
                                       Bool:D :$warn = True) {
         self.recommend-by-profile(Mix(@prof), $nrecs, :$normalize, :$vector-result, :$warn)
@@ -426,7 +439,7 @@ class ML::SparseMatrixRecommender
 
     multi method recommend-by-profile(%prof where * ~~ Map:D,
                                       Numeric:D $nrecs = 12,
-                                      Bool:D :$normalize = False,
+                                      Bool:D :$normalize = True,
                                       Bool:D :$vector-result = False,
                                       Bool:D :$warn = True) {
         self.recommend-by-profile(%prof.Mix, $nrecs, :$normalize, :$vector-result, :$warn)
@@ -434,7 +447,7 @@ class ML::SparseMatrixRecommender
 
     multi method recommend-by-profile(Str $profTag,
                                       Numeric:D $nrecs = 12,
-                                      Bool:D :$normalize = False,
+                                      Bool:D :$normalize = True,
                                       Bool:D :$vector-result = False,
                                       Bool:D :$warn = True) {
         self.recommend-by-profile(Mix([$profTag]), $nrecs, :$normalize, :$vector-result, :$warn)
@@ -442,7 +455,7 @@ class ML::SparseMatrixRecommender
 
     multi method recommend-by-profile(Mix:D $prof,
                                       Numeric:D $nrecs is copy = 12,
-                                      Bool:D :$normalize = False,
+                                      Bool:D :$normalize = True,
                                       Bool:D :$vector-result = False,
                                       Bool:D :$warn = True) {
 
@@ -627,7 +640,7 @@ class ML::SparseMatrixRecommender
         }
 
         # Reverse sort
-        $cl-res = $cl-res.sort({ -$_.value });
+        $cl-res = $cl-res.sort({ -$_.value }).Hash;
 
         # Pick max-top labels
         if $max-number-of-labels && $max-number-of-labels < $cl-res.elems {
