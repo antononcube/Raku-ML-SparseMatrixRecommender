@@ -590,7 +590,7 @@ class ML::SparseMatrixRecommender
                                      Bool:D :$normalize = True,
                                      Bool:D :$warn = False) {
 
-        # Verify tag_type
+        # Verify tag type
         unless $tag-type ∈ self.take-matrices.keys {
             die "The value of the first argument is not a known tag type.";
         }
@@ -599,7 +599,7 @@ class ML::SparseMatrixRecommender
         my $recs = self.recommend-by-profile(
                 $profile,
                 $n-top-nearest-neighbors,
-                vector-result => True,
+                :vector-result,
                 :$warn
                 ).take-value;
 
@@ -678,16 +678,6 @@ class ML::SparseMatrixRecommender
     }
 
     ##========================================================
-    ## Remove tag type(s)
-    ##========================================================
-    #| Remove tag types.
-    #| * C<@tagTypes> A list of tag types to be removed
-    method remove-tag-types(@tagTypes) {
-        note "Removing tag types is not implemented yet.";
-        return self;
-    }
-
-    ##========================================================
     ## Filter matrix
     ##========================================================
     multi method filter-matrix(%profile) {
@@ -700,20 +690,82 @@ class ML::SparseMatrixRecommender
     }
 
     ##========================================================
+    ## Remove tag type(s)
+    ##========================================================
+    #| Remove tag types.
+    #| * C<@tagTypes> A tag type of a list of tag types to be removed
+    method remove-tag-types($tag-types is copy, Bool :$warn = True) {
+        my @remove-tag-types = $tag-types ~~ Str:D ?? [$tag-types,] !! $tag-types;
+
+        die "The first argument  is expected to be a string or a list of strings."
+        unless @remove-tag-types.all ~~ Str:D;
+
+        my @known-tag-types = self.take-matrices.keys;
+        my @tag-types-known = (@known-tag-types (&) @remove-tag-types).keys;
+
+        die "None of the specified tag types is a known tag type in the recommender object."
+        unless @tag-types-known.elems > 0;
+
+        if @tag-types-known.elems < @remove-tag-types.elems && $warn {
+            note "Some tags are not known in the recommender.";
+        }
+
+        my @tag-types-remaining = (@known-tag-types (-) @remove-tag-types).keys;
+
+        my %matrices = self.take-matrices;
+        my %filtered = %matrices.grep({ $_.key ∈ @tag-types-remaining });
+
+        return ML::SparseMatrixRecommender.new(%filtered);
+    }
+
+    ##========================================================
     ## Recommenders algebra -- Join
     ##========================================================
-    method join($smr2, Str $type = 'same') {
-        my @expectedJoinTypes = <same outer union inner left>;
-        note "Recommender joining is not implemented yet.";
-        return self;
+    method join(ML::SparseMatrixRecommender:D $other, Str $join-type = 'left', *@args) {
+        my @all-row-names = self.take-m().row-names;
+        if $join-type ne 'same' {
+            if $join-type eq 'outer' || $join-type eq 'union' {
+                @all-row-names = (self.take-m().row-names + $other.take-m().row-names).unique;
+            }
+            elsif $join-type eq 'inner' {
+                my %names1 = self.take-m().row-names».self;
+                my %names2 = $other.take-m().row-names».self;
+                @all-row-names = [ %names1.keys & %names2.keys ].list;
+            }
+            elsif $join-type eq 'left' {
+                @all-row-names = self.take-m().row-names;
+            }
+            else {
+                die 'The second argument is expected to be one of "same", "outer", "inner", "left".';
+            }
+        }
+
+        my %SMats1 = self.take-matrices;
+        my %SMats2 = $other.take-matrices;
+
+        my @common-tags = (%SMats1.keys (&) %SMats2.keys).keys;
+        if @common-tags.elems > 0 {
+            warn "The tag types { @common-tags.sort.join(', ') } are also in the SMR argument, hence will be dropped.";
+        }
+
+        if $join-type ne 'same' {
+            %SMats1 = %SMats1.kv.map: { $_ => %SMats1{$_}.impose-row-names(@all-row-names) };
+            %SMats2 = %SMats2.kv.map: { $_ => %SMats2{$_}.impose-row-names(@all-row-names) };
+        }
+
+        my %matrices = %SMats1 , %SMats2;
+
+        return ML::SparseMatrixRecommender.new(%matrices);
     }
 
     ##========================================================
     ## Recommenders algebra -- Annex matrix
     ##========================================================
-    method annex-sub-matrix(%matrixInverseIndexes, Str $newTagType) {
-        note "Annexing of a sub-matrix is not implemented yet.";
-        return self;
+    method annex-sub-matrix($matrices) {
+        die 'The first argument, mats, is expected to be a hashmap of Math::SparseMatrix objects.'
+        unless $matrices ~ Map:D && $matrices.values ~~ Math::SparseMatrix:D;
+
+        return self.join(ML::SparseMatrixRecommender.new($matrices));
     }
 
     ##========================================================
