@@ -100,7 +100,7 @@ role ML::SparseMatrixRecommender::DocumentTermWeightish {
             }
         }
 
-        my @diagonal-rules = (^@global-weights.elems).kv.map( -> $i, $v { ($i, $i) => $v });
+        my @diagonal-rules = @global-weights.kv.map( -> $i, $v { ($i, $i) => $v });
         my $diag-mat = Math::SparseMatrix.new(rules => @diagonal-rules, row-names => $mat.column-names, column-names => $mat.column-names);
         $mat = $mat.dot($diag-mat);
         $mat.set-column-names($doc-term-matrix.column-names);
