@@ -723,4 +723,30 @@ class ML::SparseMatrixRecommender
         note "Tag type recommender making is not implemented yet.";
         return self;
     }
+
+    ##========================================================
+    ## Representation
+    ##========================================================
+    #| To Hash
+    multi method Hash(::?CLASS:D:-->Hash) {
+        return
+                {
+                    matrices => self.take-matrices,
+                    tag-type-weights => self.take-tag-type-weights,
+                    data => self.take-data,
+                    value => self.take-value,
+                };
+    }
+
+    #| To string
+    multi method Str(::?CLASS:D:-->Str) {
+        return self.gist;
+    }
+
+    #| To gist
+    multi method gist(::?CLASS:D:-->Str) {
+        return 'ML::SparseMatrixRecommender' ~ (matrix-dimensions => (self.take-M.rows-count, self.take-M.columns-count),
+                                                density => self.take-M.density,
+                                                tag-types => self.take-matrices.elems ≤ 12 ?? self.take-matrices.keys.List !! self.take-matrices.elems).List.raku;
+    }
 }
