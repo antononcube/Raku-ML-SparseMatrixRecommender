@@ -1,13 +1,13 @@
 use Test;
 use ML::SparseMatrixRecommender;
-use Data::Reshapers;
+use ML::SparseMatrixRecommender::Utilities;
 use Math::SparseMatrix;
 
 
 #----------------------------------------------------------
 # Tested in 01-creation.rakutest
 #----------------------------------------------------------
-my $dsData = Data::Reshapers::get-titanic-dataset(headers => 'auto');
+my $dsData = ML::SparseMatrixRecommender::Utilities::get-titanic-dataset();
 $dsData = $dsData.map({ $_<id> = "id.{$_<id>}"; $_});
 
 my $smr =

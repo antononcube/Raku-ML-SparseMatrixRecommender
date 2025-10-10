@@ -1,13 +1,13 @@
 use Test;
 use ML::SparseMatrixRecommender;
-use Data::Reshapers;
+use ML::SparseMatrixRecommender::Utilities;
 use Math::SparseMatrix;
 
 sub is-smr-map($arg) {
     return $arg ~~ Map:D && (<matrices tag-type-weights data value> (&) $arg.keys).elems == 0;
 }
 
-my $dsData = Data::Reshapers::get-titanic-dataset(headers => 'auto');
+my $dsData = ML::SparseMatrixRecommender::Utilities::get-titanic-dataset();
 
 ## 1
 is $dsData ~~ (Array:D | List:D) && $dsData.all ~~ Map:D, True, 'expected data shape';
