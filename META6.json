@@ -8,9 +8,12 @@
     "auth": "zef:antononcube",
     "depends": [
         "Data::TypeSystem:ver<0.1.7+>",
-        "Math::SparseMatrix:ver<0.0.5+>"
+        "Math::SparseMatrix:ver<0.0.4+>"
     ],
     "build-depends": [],
+    "test-depends": [
+        "Data::Reshapers:ver<0.3.7+>"
+    ],
     "provides": {
         "ML::SparseMatrixRecommender": "lib/ML/SparseMatrixRecommender.rakumod",
         "ML::SparseMatrixRecommender::DocumentTermWeightish": "lib/ML/SparseMatrixRecommender/DocumentTermWeightish.rakumod"
