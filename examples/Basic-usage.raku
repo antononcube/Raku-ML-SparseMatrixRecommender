@@ -34,18 +34,17 @@ $smrObj =
         .echo-M()
         .echo-matrices()
         .recommend-by-profile(@prof, 10, :!normalize)
-        .echo-value()
+        .echo-value('recommendation by profile: ')
         .profile(@hist)
-        .echo-value()
+        .echo-value('history profile: ')
         .recommend(@hist, :!normalize)
-        .echo-value();
+        .echo-value('recommendation by history: ');
 
 my $recs = $smrObj.take-value;
 
 say ('$recs : ', $recs.raku);
 
 my @dsRecs = $recs.map({ %(id => $_.key, score => $_.value) }).Array;
-.say for @dsRecs;
 my @dsView = join-across(@dsRecs, @titanic, <id>).sort({ -$_<score> });
 
 say to-pretty-table(@dsView, field-names => <score id passengerClass passengerAge passengerSex passengerSurvival>);
