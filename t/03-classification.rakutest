@@ -1,0 +1,59 @@
+use Test;
+use ML::SparseMatrixRecommender;
+use ML::SparseMatrixRecommender::Utilities;
+use Math::SparseMatrix;
+
+
+#----------------------------------------------------------
+# Tested in 01-creation.rakutest
+#----------------------------------------------------------
+my $dsData = ML::SparseMatrixRecommender::Utilities::get-titanic-dataset();
+$dsData = $dsData.map({ $_<id> = "id.{$_<id>}"; $_});
+
+my $smr =
+        ML::SparseMatrixRecommender
+                .new
+                .create-from-wide-form(
+                    $dsData,
+                    item-column-name => 'id',
+                    tag-types => Whatever,
+                    :!add-tag-types-to-column-names
+                )
+                .apply-term-weight-functions(
+                    global-weight-func => "IDF",
+                    local-weight-func  => "None",
+                    normalizer-func    => "Cosine"
+                );
+#----------------------------------------------------------
+
+## 1
+subtest {
+    my @profile = "male", "3rd";
+
+    my %res = $smr.classify-by-profile("passengerSurvival", @profile, n-top-nearest-neighbors => 50, :!normalize).take-value();
+
+    #is-deeply %res, {died => 38, survived => 12};
+    is  %res<died> >= 3 * %res<survived>, True, 'expected classification result';
+}, '3rd class male';
+
+## 2
+subtest {
+    my @profile = "female", "1st";
+
+    my %res = $smr.classify-by-profile("passengerSurvival", @profile, n-top-nearest-neighbors => 120, :!normalize).take-value();
+
+    #is-deeply %res, {died => 5, survived => 115};
+    is  %res<survived> >= 20 * %res<died>, True, 'expected classification result';
+}, '1st class female';
+
+## 3
+subtest {
+    my @profile = "female", "1st", 'BlahBlah';
+
+    my %res = $smr.classify-by-profile("passengerSurvival", @profile, n-top-nearest-neighbors => 120, :!normalize).take-value();
+
+    #is-deeply %res, {died => 5, survived => 115};
+    is  %res<survived> >= 20 * %res<died>, True, 'expected classification result';
+}, 'with blah-blah tag';
+
+done-testing;
