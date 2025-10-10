@@ -169,28 +169,28 @@ class ML::SparseMatrixRecommender
     ##========================================================
     ## Echoers
     ##========================================================
-    method echo-M() {
-        say $!M;
+    method echo-M(:&with = &say) {
+        &with($!M);
         self
     }
 
-    method echo-matrices() {
-        say %!matrices;
+    method echo-matrices(:&with = &say) {
+        &with(%!matrices);
         self
     }
 
-    method echo-tag-type-weights() {
-        say %!tag-type-weights;
+    method echo-tag-type-weights(:&with = &say) {
+        &with(%!tag-type-weights);
         self
     }
 
-    method echo-data() {
-        say $!data;
+    method echo-data(:&with = &say) {
+        &with($!data);
         self
     }
 
-    method echo-value() {
-        say $!value;
+    method echo-value(Str:D $note = '', :&with = &say) {
+        &with($note, $!value);
         self
     }
 
