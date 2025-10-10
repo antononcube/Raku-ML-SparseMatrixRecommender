@@ -207,7 +207,7 @@ class ML::SparseMatrixRecommender
     multi method new($matrices, :$value = Whatever) {
         die 'The first argument is expected to be a hashmap of Math::SparseMatrix objects.'
         unless $matrices ~~ Map:D && $matrices.values.all ~~ Math::SparseMatrix:D;
-        my $M = reduce({$^a.column-bind($^b)}, |$matrices);
+        my $M = reduce({$^a.column-bind($^b)}, |$matrices.values);
         self.bless(:$M, :$matrices, :$value);
     }
 
@@ -238,7 +238,7 @@ class ML::SparseMatrixRecommender
         }
 
         if $tag-types.isa(Whatever) {
-            $tag-types = @data.head.keys.grep({$_ ne $item-key})
+            $tag-types = @data.head.keys.grep({$_ ne $item-key}).List
         }
 
         die 'The argument $tag-types is expected to be a list of strings or Whatever.'
@@ -322,6 +322,10 @@ class ML::SparseMatrixRecommender
         self.profile(Mix([$item]), :$normalize, :$warn)
     }
 
+    multi method profile($items where * ~~ Map:D, Bool:D :$normalize = False, Bool:D :$warn = True) {
+        self.profile($items.Mix, :$normalize, :$warn)
+    }
+
     multi method profile(Mix:D $items, Bool:D :$normalize = False, Bool:D :$warn = True) {
 
         # Make sure the items and tags are current
@@ -399,6 +403,14 @@ class ML::SparseMatrixRecommender
         self.recommend-by-profile(Mix(@prof), $nrecs, :$normalize, :$vector-result, :$warn)
     }
 
+    multi method recommend-by-profile(%prof where * ~~ Map:D,
+                                      Numeric:D $nrecs = 12,
+                                      Bool:D :$normalize = False,
+                                      Bool:D :$vector-result = False,
+                                      Bool:D :$warn = True) {
+        self.recommend-by-profile(%prof.Mix, $nrecs, :$normalize, :$vector-result, :$warn)
+    }
+
     multi method recommend-by-profile(Str $profTag,
                                       Numeric:D $nrecs = 12,
                                       Bool:D :$normalize = False,
@@ -462,7 +474,7 @@ class ML::SparseMatrixRecommender
             my @res = $rec.row-sums(:p).sort({ -$_.value }).map({ $_.key => $_.value });
 
             ## Result
-            $rec = @res.head(min($nrecs, @res.elems));
+            $rec = @res.head(min($nrecs, @res.elems)).Array;
         }
 
         # Assign obtained recommendations to the pipeline value
