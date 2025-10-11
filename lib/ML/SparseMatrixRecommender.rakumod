@@ -67,7 +67,7 @@ class ML::SparseMatrixRecommender
         self!file-in-items-and-tags if %!items.elems == 0 || %!tags.elems == 0 || %!items.elems != $!M.nrow || %!tags.elems != $!M.ncol;
 
         # Make the rules
-        my @rules = $mix.map({ %!items{$_.key}:exists ?? ((%!items{$_.key}, 0) => $_.value) !! Empty });
+        my @rules = $mix.map({ %!items{$_.key}:exists ?? ((0, %!items{$_.key}) => $_.value) !! Empty });
 
         if $warn {
             note 'None of the keys of the argument are known items.' if @rules.elems == 0;
@@ -434,14 +434,14 @@ class ML::SparseMatrixRecommender
         if $vector-result {
 
             if $nrecs < $rec.rows-count {
-                my %recs2 = $rec.row-sums(:p);
+                my %recs2 = $rec.rules(:names).map({ $_.key.head => $_.value });
                 my @recs2 = %recs2.grep(*.value > 0).sort(-*.value)>>.key[^$nrecs];
                 $rec = $rec[@recs2;*].impose-row-names($rec.row-names);
             }
 
         } else {
             ## Sort
-            my @res = $rec.row-sums(:p).sort({ -$_.value }).map({ $_.key => $_.value });
+            my @res = $rec.rules(:names).map({ $_.key.head => $_.value }).sort({ -$_.value }).map({ $_.key => $_.value });
 
             ## Result
             $rec = @res.head(min($nrecs, @res.elems)).Array;
@@ -508,14 +508,14 @@ class ML::SparseMatrixRecommender
         if $vector-result {
 
             if $nrecs < $rec.rows-count {
-                my %recs2 = $rec.row-sums(:p);
+                my %recs2 = $rec.rules(:names).map({ $_.key.head => $_.value });
                 my @recs2 = %recs2.grep(*.value > 0).sort(-*.value)>>.key[^$nrecs];
                 $rec = $rec[@recs2;*].impose-row-names($rec.row-names);
             }
 
         } else {
             ## Sort
-            my @res = $rec.row-sums(:p).sort({ -$_.value }).map({ $_.key => $_.value });
+            my @res = $rec.rules(:names).map({ $_.key.head => $_.value }).sort({ -$_.value }).map({ $_.key => $_.value });
 
             ## Result
             $rec = @res.head(min($nrecs, @res.elems)).Array;
