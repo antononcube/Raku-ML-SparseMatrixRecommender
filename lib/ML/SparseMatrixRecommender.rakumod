@@ -328,56 +328,46 @@ class ML::SparseMatrixRecommender
     ## Profile
     ##========================================================
     #| Find items profile.
-    #| * C<@items> A list or a mix of items.
+    #| * C<$items> A list of items, a hashmap or mix of scored items, or 1-column Math::SparseMatrix object.
     #| * C<$normalize> Should the recommendation scores be normalized or not?
     #| * C<$warn> Should warnings be issued or not?
-    multi method profile(@items, Bool:D :$normalize = True, Bool:D :$warn = True) {
-        self.profile(Mix(@items), :$normalize, :$warn)
-    }
+    method profile($items is copy,
+                   Bool:D :$normalize = True,
+                   Bool:D :v(:$vector-result) = False,
+                   Bool:D :$warn = True) {
 
-    multi method profile(Str:D $item, Bool:D :$normalize = True, Bool:D :$warn = True) {
-        self.profile(Mix([$item]), :$normalize, :$warn)
-    }
-
-    multi method profile($items where * ~~ Map:D, Bool:D :$normalize = True, Bool:D :$warn = True) {
-        self.profile($items.Mix, :$normalize, :$warn)
-    }
-
-    multi method profile(Mix:D $items, Bool:D :$normalize = True, Bool:D :$warn = True) {
-
-        # Make sure the items and tags are current
-        self!file-in-items-and-tags if %!items.elems == 0 || %!tags.elems == 0 || %!items.elems != $!M.nrow || %!tags.elems != $!M.ncol;
-
-        ## Make sure items are known
-        my %itemsQuery = $items.grep({ %!items{$_.key}:exists });
-
-        if %itemsQuery.elems == 0 && $warn {
-            warn 'None of the items is known in the recommender.';
-            self.set-value(%());
-            return self
+        # Process $items
+        $items = do given $items {
+            when $_ ~~ Str:D { [$_, ].Mix}
+            when $_ ~~ (Array:D | List:D | Seq:D) && $_.all ~~ Str:D {$_.Mix}
+            when $_ ~~ Map:D {$_.Mix}
+            when $_ ~~ Mix:D || $_ ~~ Math::SparseMatrix:D {$items}
+            default {
+                die 'Do not know how to process the first arugment.'
+            }
         }
 
-        if %itemsQuery.elems < $items.elems && $warn {
-            warn 'Some of the items are unknown in the recommender.';
-        }
-
-        # Make history vector
-        my $histVec = self.make-history-vector(%itemsQuery.Mix);
+        # Make a vector of items
+        my $histVec = $items ~~ Mix:D ?? self.make-history-vector($items) !! $items;
 
         ## Compute the profile
         my $prof = $histVec.dot($!M);
+        #my $prof = $histVec.to-adapted.dot($!M);
+        #$prof.core-matrix = $prof.core-matrix.to-csr;
 
         ## Normalize
         if $normalize {
             $prof = self!max-normalize-sparse-matrix($prof, :abs-max);
         }
 
-        ## Sort
-        my @res = $prof.column-sums(:p).grep(*.value > 0).sort({ -$_.value }).map({ $_.key => $_.value });
-
-        ## Result
-        $!value = @res;
-
+        if $vector-result {
+            $!value = $prof;
+        } else {
+            ## Sort
+            my @res = $prof.column-sums(:p).grep(*.value > 0).sort({  -$_.value }).map({ $_.key => $_.value });
+            ## Result
+            $!value = @res;
+        }
         return self;
     }
 
@@ -394,7 +384,7 @@ class ML::SparseMatrixRecommender
                      Numeric:D $nrecs is copy = 12,
                      Bool:D :$normalize = False,
                      Bool:D :$remove-history = True,
-                     Bool:D :$vector-result = False,
+                     Bool:D :v(:$vector-result) = False,
                      Bool:D :$warn = True) {
 
         # Process $items
@@ -402,9 +392,7 @@ class ML::SparseMatrixRecommender
             when $_ ~~ Str:D { [$_, ].Mix}
             when $_ ~~ (Array:D | List:D | Seq:D) && $_.all ~~ Str:D {$_.Mix}
             when $_ ~~ Map:D {$_.Mix}
-            when $_ ~~ Mix:D || $_ ~~ Math::SparseMatrix:D {
-                # Do nothing
-            }
+            when $_ ~~ Mix:D || $_ ~~ Math::SparseMatrix:D {$items}
             default {
                 die 'Do not know how to process the first arugment.'
             }
@@ -474,7 +462,7 @@ class ML::SparseMatrixRecommender
     multi method recommend-by-profile(@prof,
                                       Numeric:D $nrecs = 12,
                                       Bool:D :$normalize = True,
-                                      Bool:D :$vector-result = False,
+                                      Bool:D :v(:$vector-result) = False,
                                       Bool:D :$warn = True) {
         self.recommend-by-profile(Mix(@prof), $nrecs, :$normalize, :$vector-result, :$warn)
     }
@@ -482,7 +470,7 @@ class ML::SparseMatrixRecommender
     multi method recommend-by-profile(%prof where * ~~ Map:D,
                                       Numeric:D $nrecs = 12,
                                       Bool:D :$normalize = True,
-                                      Bool:D :$vector-result = False,
+                                      Bool:D :v(:$vector-result) = False,
                                       Bool:D :$warn = True) {
         self.recommend-by-profile(%prof.Mix, $nrecs, :$normalize, :$vector-result, :$warn)
     }
@@ -490,7 +478,7 @@ class ML::SparseMatrixRecommender
     multi method recommend-by-profile(Str $profTag,
                                       Numeric:D $nrecs = 12,
                                       Bool:D :$normalize = True,
-                                      Bool:D :$vector-result = False,
+                                      Bool:D :v(:$vector-result) = False,
                                       Bool:D :$warn = True) {
         self.recommend-by-profile(Mix([$profTag]), $nrecs, :$normalize, :$vector-result, :$warn)
     }
@@ -498,7 +486,7 @@ class ML::SparseMatrixRecommender
     multi method recommend-by-profile(Mix:D $prof,
                                       Numeric:D $nrecs is copy = 12,
                                       Bool:D :$normalize = True,
-                                      Bool:D :$vector-result = False,
+                                      Bool:D :v(:$vector-result) = False,
                                       Bool:D :$warn = True) {
 
         # Make sure the items and tags are current
@@ -530,6 +518,8 @@ class ML::SparseMatrixRecommender
 
         ## Compute recommendations
         my $rec = $!M.dot($svec);
+        #my $rec = $!M.to-adapted.dot($svec.to-adapted);
+        #$rec.core-matrix = $rec.core-matrix.to-csr;
 
         ## Normalize
         if $normalize {
