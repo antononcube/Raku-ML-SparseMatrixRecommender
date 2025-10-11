@@ -1,8 +1,8 @@
 #!/usr/bin/env perl6
 
 use ML::SparseMatrixRecommender;
-use Data::Reshapers;
 use Data::Summarizers;
+use Data::Reshapers;
 
 ##===========================================================
 my @titanic = Data::Reshapers::get-titanic-dataset(headers => 'auto');
@@ -37,14 +37,13 @@ $smrObj =
         .echo-value('recommendation by profile: ')
         .profile(@hist)
         .echo-value('history profile: ')
-        .recommend(@hist, :!normalize)
+        .recommend(@hist, :!normalize, :!remove-history)
         .echo-value('recommendation by history: ');
 
 my $recs = $smrObj.take-value;
 
 say ('$recs : ', $recs.raku);
 
-my @dsRecs = $recs.map({ %(id => $_.key, score => $_.value) }).Array;
-my @dsView = join-across(@dsRecs, @titanic, <id>).sort({ -$_<score> });
+my @dsView = |$smrObj.join-across(@titanic, 'id').take-value;
 
 say to-pretty-table(@dsView, field-names => <score id passengerClass passengerAge passengerSex passengerSurvival>);
