@@ -5,7 +5,7 @@ use Math::SparseMatrix;
 role ML::SparseMatrixRecommender::DocumentTermWeightish {
 
     method !max-normalize-sparse-matrix(Math::SparseMatrix:D $mat, Bool:D :$clone = False, Bool:D :$abs-max = False) {
-        my $max = $abs-max ?? $mat.Array.flat(:hammer)>>.abs.max !! $mat.Array.flat(:hammer).max;
+        my $max = $abs-max ?? $mat.tuples>>.tail>>.abs.max !! $mat.tuples>>.tail>>.max;
         $max = $max.abs > 0 ?? (1.0 / $max).Num !! 1.0;
         return $mat.multiply($max, $clone);
     }
