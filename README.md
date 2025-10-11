@@ -12,7 +12,7 @@ Latent Semantic Indexing (LSI) functions like IDF, TF-IDF, etc. Hence, the packa
 document-term matrix creation functions and LSI application functions. I included them in the
 package since I wanted to minimize the external package dependencies.
 
-The package includes two data-sets `dfTitanic` and `dfMushroom` in order to make easier the
+The package includes the data-sets `dfTitanic` in order to make easier the
 writing of introductory examples and unit tests.
 
 For more theoretical description see the article
@@ -20,12 +20,9 @@ For more theoretical description see the article
 , [AA1].
 
 For detailed examples see the files
-["SMR-experiments-large-data.py"](https://github.com/antononcube/Python-packages/blob/main/SparseMatrixRecommender/examples/SMR-experiments-large-data.py)
+["Basic-usage.raku"](https://github.com/antononcube/Raku-ML-SparseMatrixRecommender/blob/main/examples/Basic-usage.raku)
 and
-["SMR-creation-from-long-form.py"](https://github.com/antononcube/Python-packages/blob/main/SparseMatrixRecommender/examples/SMR-creation-from-long-form.py).
-
-The list of features and its implementation status is given in the [org-mode](https://orgmode.org) file
-["SparseMatrixRecommender-work-plan.org"](https://github.com/antononcube/Python-packages/blob/main/org/SparseMatrixRecommender-work-plan.org).
+["Classification.raku"](https://github.com/antononcube/Raku-ML-SparseMatrixRecommender/blob/main/examples/Classification.raku).
 
 **Remark:** "SMR" stands for "Sparse Matrix Recommender". Most of the operations of this Python package
 mirror the operations of the software monads "SMRMon-WL", "SMRMon-R", [AAp1, AAp2].
@@ -36,7 +33,7 @@ mirror the operations of the software monads "SMRMon-WL", "SMRMon-R", [AAp1, AAp
 
 Here is a diagram that encompasses the workflows this package supports (or will support):
 
-[![SMR-workflows](https://github.com/antononcube/SimplifiedMachineLearningWorkflows-book/raw/master/Part-2-Monadic-Workflows/Diagrams/A-monad-for-Sparse-Matrix-Recommender-workflows/SMR-workflows.jpeg)](https://github.com/antononcube/SimplifiedMachineLearningWorkflows-book/raw/master/Part-2-Monadic-Workflows/Diagrams/A-monad-for-Sparse-Matrix-Recommender-workflows/SMR-workflows.pdf)
+[![SMR-workflows](https://github.com/antononcube/SimplifiedMachineLearningWorkflows-book/raw/master/Part-2-Monadic-Workflows/Diagrams/A-monad-for-Sparse-Matrix-Recommender-workflows/SMR-workflows.jpeg)](
 
 Here is narration of a certain workflow scenario:
 
@@ -55,7 +52,54 @@ Here is narration of a certain workflow scenario:
 
 Here is a diagram of typical pipeline building using a `ML::SparseMatrixRecommender` object:
 
-![SMRMon-pipeline-Raku](https://github.com/antononcube/SimplifiedMachineLearningWorkflows-book/raw/master/Part-2-Monadic-Workflows/Diagrams/A-monad-for-Recommender-workflows/SMRMon-pipeline-Python.jpg)
+```mermaid
+flowchart TD
+%% --- Top / Legend ---
+%% SMR = Sparse Matrix Recommender
+
+%% --- Inputs & Constructors ---
+    %%subgraph IO["Input/Output"]
+        IN1[/"data frame<br>or<br>a hashmap of<br>Math::SparseMatrix objects"/]
+        WIDE[("Data<br>(wide form)")]
+        ECHO[/Echo<br>output/]
+        OUT[/dataset<br>or<br>hashmap/]
+    %%end
+    IN1 -.- WIDE
+
+    IN1 --> cfwf
+    WIDE --> join
+
+%% --- SMR object & pipeline value (context/state) ---
+    subgraph MON[" "]
+        SMR{{<br>SMR<br>object<br>}}
+        VAL([SMR<br>pipeline value])
+    end
+    
+%% --- Pipeline container ---
+    subgraph PIPE[SMR monad pipeline]
+        direction LR
+        unit["ML::SparseMatrixRecommender.new"]
+        cfwf[create-from-wide-form]
+        echo[echo-data-sumary]
+        twf[apply-term-weight-functions]
+        rec[recommend]
+        join[join-across]
+        prove[prove-by-metadata]
+
+        unit ==> cfwf ==> echo ==> twf ==> rec ==> join ==> prove
+    end
+
+    cfwf -.- |data<br>matrices<br>M|SMR
+    echo -.- |data|SMR
+    twf  -.- |M|SMR
+    echo -- echo-value --> ECHO
+    join -- take-value --> OUT
+    prove -- take-value --> OUT
+
+    VAL === PIPE
+    VAL -.- SMR
+    SMR === PIPE
+```
 
 **Remark:** The **monadic design** allows "pipelining" of the SMR operations -- see the usage example section.
 
@@ -102,7 +146,7 @@ my $smrObj =
         .echo-value('recommendation by profile: ');
 ```
 ```
-# recommendation by profile: [192 => 2 71 => 2 284 => 2 321 => 2 203 => 2 302 => 2 90 => 2 197 => 2 245 => 2 307 => 2]
+# recommendation by profile: [35 => 2 242 => 2 174 => 2 21 => 2 87 => 2 236 => 2 82 => 2 210 => 2 270 => 2 206 => 2]
 ```
 
 **Remark:** More examples can be found the directory
@@ -243,9 +287,9 @@ use ML::NLPTemplateEngine;
 ```
 # smrObj=
 # SMRMonUnit[]⟹
-# SMRMonCreate[{"1st male"}set]⟹
+# SMRMonCreate[dfTitanic]⟹
 # SMRMonRecommendByProfile[{"1st"}, 12]⟹
-# SMRMonJoinAcross[{"1st male"}set]⟹
+# SMRMonJoinAcross[dfTitanic]⟹
 # SMRMonEchoValue[];
 ```
 
