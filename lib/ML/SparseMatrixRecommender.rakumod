@@ -27,7 +27,7 @@ class ML::SparseMatrixRecommender
         %!tags = $!M.column-names Z=> (^$!M.ncol);
     }
 
-    method make-profile-vector(
+    method to-profile-vector(
             Mix:D $mix,
             Bool:D :$column = True,
             Str:D :$item-name = 'profile',
@@ -37,7 +37,7 @@ class ML::SparseMatrixRecommender
         self!file-in-items-and-tags if %!items.elems == 0 || %!tags.elems == 0 || %!items.elems != $!M.nrow || %!tags.elems != $!M.ncol;
 
         # Make the rules
-        my @rules = $mix.map({ (%!tags{$_.key}, 0) => $_.value });
+        my @rules = $mix.map({ %!tags{$_.key}:exists ?? ((%!tags{$_.key}, 0) => $_.value) !! Empty });
 
         if $warn {
             note 'None of the keys of the argument are known tags.' if @rules.elems == 0;
@@ -57,7 +57,7 @@ class ML::SparseMatrixRecommender
         return $mat;
     }
 
-    method make-history-vector(
+    method to-history-vector(
             Mix:D $mix,
             Bool:D :$column = False,
             Str:D :$tag-name = 'history',
@@ -67,7 +67,7 @@ class ML::SparseMatrixRecommender
         self!file-in-items-and-tags if %!items.elems == 0 || %!tags.elems == 0 || %!items.elems != $!M.nrow || %!tags.elems != $!M.ncol;
 
         # Make the rules
-        my @rules = $mix.map({ (0, %!items{$_.key}) => $_.value });
+        my @rules = $mix.map({ %!items{$_.key}:exists ?? ((%!items{$_.key}, 0) => $_.value) !! Empty });
 
         if $warn {
             note 'None of the keys of the argument are known items.' if @rules.elems == 0;
@@ -328,7 +328,7 @@ class ML::SparseMatrixRecommender
     ## Profile
     ##========================================================
     #| Find items profile.
-    #| * C<$items> A list of items, a hashmap or mix of scored items, or 1-column Math::SparseMatrix object.
+    #| * C<$items> A list of items, a hashmap or mix of scored items, or 1-row Math::SparseMatrix object.
     #| * C<$normalize> Should the recommendation scores be normalized or not?
     #| * C<$warn> Should warnings be issued or not?
     method profile($items is copy,
@@ -348,7 +348,10 @@ class ML::SparseMatrixRecommender
         }
 
         # Make a vector of items
-        my $histVec = $items ~~ Mix:D ?? self.make-history-vector($items) !! $items;
+        my $histVec = $items ~~ Mix:D ?? self.to-history-vector($items) !! $items;
+
+        die "If the first argument is a sparse matrix object then it is expected to be with dimensions (1, {self.take-M.rows-count})."
+        unless $histVec.rows-count == 1 && $histVec.columns-count == self.take-M.rows-count;
 
         ## Compute the profile
         my $prof = $histVec.dot($!M);
@@ -375,7 +378,7 @@ class ML::SparseMatrixRecommender
     ## Recommend by history
     ##========================================================
     #| Recommend items for a consumption history (that is a list or a mix of items.)
-    #| * C<@items> A list or a mix of items.
+    #| * C<@items> A list of items, a hashmap or mix of scored items, or 1-row Math::SparseMatrix object.
     #| * C<$nrecs> Number of recommendations.
     #| * C<$normalize> Should the recommendation scores be normalized or not?
     #| * C<$remove-history> Should the history be removed from the result recommendations or not??
@@ -399,7 +402,7 @@ class ML::SparseMatrixRecommender
         }
 
         # Make a vector of items
-        my $vec = $items ~~ Mix:D ?? self.make-history-vector($items) !! $items;
+        my $vec = $items ~~ Mix:D ?? self.to-history-vector($items) !! $items;
 
         die "If the first argument is a sparse matrix object then it is expected to be with dimensions (1, {self.take-M.rows-count})."
         unless $vec.rows-count == 1 && $vec.columns-count == self.take-M.rows-count;
@@ -454,57 +457,35 @@ class ML::SparseMatrixRecommender
     ## Recommend by profile
     ##========================================================
     #| Recommend items for a consumption profile (that is a list or a mix of tags.)
-    #| * C<@prof> A list or a mix of tags.
+    #| * C<$tags> A list of tags, a hashmap or a mix of scored tags, or 1-column sparse matrix.
     #| * C<$nrecs> Number of recommendations.
     #| * C<$normalize> Should the recommendation scores be normalized or not?
     #| * C<$object> Should the result be an object or not?
     #| * C<$warn> Should warnings be issued or not?
-    multi method recommend-by-profile(@prof,
-                                      Numeric:D $nrecs = 12,
-                                      Bool:D :$normalize = True,
-                                      Bool:D :v(:$vector-result) = False,
-                                      Bool:D :$warn = True) {
-        self.recommend-by-profile(Mix(@prof), $nrecs, :$normalize, :$vector-result, :$warn)
-    }
+    method recommend-by-profile($tags is copy,
+                                Numeric:D $nrecs is copy = 12,
+                                Bool:D :$normalize = True,
+                                Bool:D :v(:$vector-result) = False,
+                                Bool:D :$warn = True) {
 
-    multi method recommend-by-profile(%prof where * ~~ Map:D,
-                                      Numeric:D $nrecs = 12,
-                                      Bool:D :$normalize = True,
-                                      Bool:D :v(:$vector-result) = False,
-                                      Bool:D :$warn = True) {
-        self.recommend-by-profile(%prof.Mix, $nrecs, :$normalize, :$vector-result, :$warn)
-    }
-
-    multi method recommend-by-profile(Str $profTag,
-                                      Numeric:D $nrecs = 12,
-                                      Bool:D :$normalize = True,
-                                      Bool:D :v(:$vector-result) = False,
-                                      Bool:D :$warn = True) {
-        self.recommend-by-profile(Mix([$profTag]), $nrecs, :$normalize, :$vector-result, :$warn)
-    }
-
-    multi method recommend-by-profile(Mix:D $prof,
-                                      Numeric:D $nrecs is copy = 12,
-                                      Bool:D :$normalize = True,
-                                      Bool:D :v(:$vector-result) = False,
-                                      Bool:D :$warn = True) {
-
-        # Make sure the items and tags are current
-        self!file-in-items-and-tags if %!items.elems == 0 || %!tags.elems == 0 || %!items.elems != $!M.nrow || %!tags.elems != $!M.ncol;
-
-        ## Make sure tags are known
-        my %profQuery = $prof.grep({ %!tags{$_.key}:exists });
-
-        if %profQuery.elems == 0 && $warn {
-            warn 'None of the profile tags is known in the recommender.';
-            self.set-value(%());
-            return self;
+        # Process $tags
+        $tags = do given $tags {
+            when $_ ~~ Str:D { [$_, ].Mix}
+            when $_ ~~ (Array:D | List:D | Seq:D) && $_.all ~~ Str:D {$_.Mix}
+            when $_ ~~ Map:D {$_.Mix}
+            when $_ ~~ Mix:D || $_ ~~ Math::SparseMatrix:D {$tags}
+            default {
+                die 'Do not know how to process the first arugment.'
+            }
         }
 
-        if 0 < %profQuery.elems < $prof.elems && $warn {
-            warn 'Some of the profile tags are unknown in the recommender.';
-        }
+        # Make a vector of items
+        my $vec = $tags ~~ Mix:D ?? self.to-profile-vector($tags) !! $tags;
 
+        die "If the first argument is a sparse matrix object then it is expected to be with dimensions (1, {self.take-M.columns-count})."
+        unless $vec.columns-count == 1 && $vec.rows-count == self.take-M.columns-count;
+
+        # Process number of recommendations
         $nrecs = round($nrecs);
 
         if $nrecs <= 0 {
@@ -513,11 +494,8 @@ class ML::SparseMatrixRecommender
             return self;
         }
 
-        ## Make the sparse matrix/vector for the profile
-        my $svec = self.make-profile-vector(%profQuery.Mix, :$warn);
-
         ## Compute recommendations
-        my $rec = $!M.dot($svec);
+        my $rec = $!M.dot($vec);
         #my $rec = $!M.to-adapted.dot($svec.to-adapted);
         #$rec.core-matrix = $rec.core-matrix.to-csr;
 
@@ -570,7 +548,7 @@ class ML::SparseMatrixRecommender
                                    Bool :$warn = True) {
         my %profMix;
         if $type.lc eq 'intersection' {
-            my $profileVec = self.make-profile-vector(@prof.Mix);
+            my $profileVec = self.to-profile-vector(@prof.Mix);
             my %sVec = self.take-M.unitize(:clone).dot($profileVec).row-sums(:pairs);
             my $n = $profileVec.column-sums.head;
             %profMix = %sVec.grep({ $_.value >= $n });
