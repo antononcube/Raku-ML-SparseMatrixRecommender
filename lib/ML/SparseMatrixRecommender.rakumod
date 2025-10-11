@@ -795,8 +795,9 @@ class ML::SparseMatrixRecommender
     ##========================================================
     ## Recommenders algebra -- Join
     ##========================================================
-    method join(ML::SparseMatrixRecommender:D $other, Str $join-type = 'left', *@args) {
+    method join(ML::SparseMatrixRecommender:D $other, $join-type is copy = Whatever, *%args) {
         my @all-row-names = self.take-m().row-names;
+        if $join-type.isa(Whatever) { $join-type = %args<join-type> // 'left'}
         if $join-type ne 'same' {
             if $join-type eq 'outer' || $join-type eq 'union' {
                 @all-row-names = (self.take-m().row-names + $other.take-m().row-names).unique;
@@ -810,7 +811,7 @@ class ML::SparseMatrixRecommender
                 @all-row-names = self.take-m().row-names;
             }
             else {
-                die 'The second argument is expected to be one of "same", "outer", "inner", "left".';
+                die 'The second argument is expected to be one of "same", "outer", "inner", "left", or Whatever';
             }
         }
 
