@@ -101,9 +101,6 @@ my $smrObj =
         .recommend-by-profile(["passengerSex:male", "passengerClass:1st"], 10, :!normalize)
         .echo-value('recommendation by profile: ');
 ```
-```
-# recommendation by profile: [192 => 2 71 => 2 284 => 2 321 => 2 203 => 2 302 => 2 90 => 2 197 => 2 245 => 2 307 => 2]
-```
 
 **Remark:** More examples can be found the directory
 ["./docs"](https://github.com/antononcube/Raku-ML-SparseMatrixRecommender/docs).
@@ -239,14 +236,6 @@ Here is an example using the NLP Template Engine, [AAr2, AAv3]:
 use ML::NLPTemplateEngine;
 'create with dfTitanic; apply the LSI functions IDF, None, Cosine;recommend by profile 1st and male'
 ==> concretize(target-language => "Raku")
-```
-```
-# smrObj=
-# SMRMonUnit[]⟹
-# SMRMonCreate[{"1st male"}set]⟹
-# SMRMonRecommendByProfile[{"1st"}, 12]⟹
-# SMRMonJoinAcross[{"1st male"}set]⟹
-# SMRMonEchoValue[];
 ```
 
 
