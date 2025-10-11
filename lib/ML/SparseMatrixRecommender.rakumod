@@ -189,8 +189,12 @@ class ML::SparseMatrixRecommender
         self
     }
 
-    method echo-value(Str:D $note = '', :&with = &say) {
-        &with($note, $!value);
+    multi method echo-value(Str:D $note, :&with = &say, :&as = WhateverCode) {
+        return self.echo-value(:$note, :&with, :&as);
+    }
+
+    multi method echo-value(Str:D :$note = '', :&with = &say, :&as = WhateverCode) {
+        &as.defined ?? &with($note, &as($!value)) !! &with($note, $!value);
         self
     }
 
@@ -689,6 +693,70 @@ class ML::SparseMatrixRecommender
         self.set-value($cl-res);
 
         return self;
+    }
+
+    ##========================================================
+    ## Join across
+    ##========================================================
+    multi method join-across($data, $on) {
+        return self.join-across($data, :$on);
+    }
+
+    multi method join-across($dsData is copy = Whatever, :$on is copy = Whatever) {
+
+        # Check pipeline's value
+        unless $!value ~~ Map:D || $!value ~~ (Array:D | List:D | Seq:D) && $!value.all ~~ Pair:D {
+            note 'The pipeline value is not a hashmap or list of scored items.';
+            return self;
+        }
+
+        # Process data
+        die 'The first argument is expected to be a list of hashmaps or Whatever.'
+        unless $dsData.isa(Whatever) || $dsData ~~ (Array:D | List:D | Seq:D) && $dsData.all ~~ Map:D;
+
+        if $dsData.isa(Whatever) {
+            die 'The data attribute is not a list of hashmaps.'
+            unless $!data ~~ (Array:D | List:D | Seq:D) && $!data.all ~~ Map:D;
+            $dsData = $!data
+        }
+
+        # Check data for being homogeneous
+        # TBD
+
+        # Process binding field
+        die 'The argument $on is expected to be a strinng or Whatever.'
+        unless $on.isa(Whatever) || $on ~~ Str:D;
+
+        if $on.isa(Whatever) {
+            $on = do given $dsData.head {
+                when $_.keys.grep(* ∈ <id Id ID>).elems > 0 {
+                    $_.keys.first(* ∈ <id Id ID>)
+                }
+                when $_.keys.grep( *.lc eq item ).elems > 0 {
+                    $_.keys.first(*.lc eq item )
+                }
+                when $_.keys.grep(* ~~ /:i ['_' | '-' | '.'] 'id' /).elems > 0 {
+                    $_.keys.first(* ~~ /:i  ['_' | '-' | '.']  'id' /)
+                }
+                default {
+                    die 'Cannot guess item column name to join across on.'
+                }
+            }
+        }
+
+        my %recordPos = $dsData.kv.map( -> $k, %v { %v{$on} => $k });
+
+        my @res;
+        for |$!value -> $p {
+            if %recordPos{$p.key}:exists {
+                my %record = $dsData[%recordPos{$p.key}];
+                my %h = %(score => $p.value) , %record;
+                @res.push(%h)
+            }
+        }
+
+        self.set-value(@res);
+        return self
     }
 
     ##========================================================
