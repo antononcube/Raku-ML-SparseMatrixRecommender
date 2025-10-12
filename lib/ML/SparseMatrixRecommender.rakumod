@@ -420,7 +420,7 @@ class ML::SparseMatrixRecommender
 
         if $nrecs <= 0 {
             note 'The second argument is expected to be a positive integer or Inf.';
-            self.set-value(%());
+            self.set-value(Whatever);
             return self;
         }
 
@@ -441,7 +441,7 @@ class ML::SparseMatrixRecommender
 
         } else {
             ## Sort
-            my @res = $rec.rules(:names).map({ $_.key.head => $_.value }).sort({ -$_.value }).map({ $_.key => $_.value });
+            my @res = $rec.rules(:names).map({ $_.key.head => $_.value }).sort({ -$_.value });
 
             ## Result
             $rec = @res.head(min($nrecs, @res.elems)).Array;
@@ -515,7 +515,7 @@ class ML::SparseMatrixRecommender
 
         } else {
             ## Sort
-            my @res = $rec.rules(:names).map({ $_.key.head => $_.value }).sort({ -$_.value }).map({ $_.key => $_.value });
+            my @res = $rec.rules(:names).map({ $_.key.head => $_.value }).sort({ -$_.value });
 
             ## Result
             $rec = @res.head(min($nrecs, @res.elems)).Array;
