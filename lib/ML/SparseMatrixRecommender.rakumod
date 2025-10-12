@@ -302,9 +302,9 @@ class ML::SparseMatrixRecommender
     ##========================================================
     #| Apply LSI functions to the entries of the recommendation matrix.
     multi method apply-term-weight-functions(
-            :global(:$global-weight-func) = Whatever, #= LSI global term weight function. One of "ColumnSum", "Entropy", "IDF", "None".
-            :local(:$local-weight-func)  = Whatever,  #= LSI local term weight function. One of "Binary", "Log", "None".
-            :normalizer(:$normalizer-func) = Whatever    #= LSI normalizer function. One of "Cosine", "None", "RowSum".
+            :global(:global-weight-function(:$global-weight-func)) = Whatever, #= LSI global term weight function. One of "ColumnSum", "Entropy", "IDF", "None".
+            :local(:local-weight-function(:$local-weight-func))    = Whatever, #= LSI local term weight function. One of "Binary", "Log", "None".
+            :normalizer(:normalizer-function(:$normalizer-func))   = Whatever, #= LSI normalizer function. One of "Cosine", "None", "RowSum".
                                              ) {
         return self.apply-term-weight-functions($global-weight-func, $local-weight-func, $normalizer-func);
     }
@@ -411,9 +411,9 @@ class ML::SparseMatrixRecommender
         my $rec = self.take-M.dot($vec.dot(self.take-M).transpose(:!clone));
 
         if $remove-history {
-            my $hist0 = $vec.unitize(:clone).transpose.multiply(0);
-            $hist0.implicit-value = 1;
-            $rec = $rec.multiply($hist0)
+            my $hist2 = $vec.unitize(:clone).transpose;
+            $hist2 = $hist2.multiply($rec);
+            $rec = $rec.add($hist2.multiply(-1));
         }
 
         $nrecs = round($nrecs);
