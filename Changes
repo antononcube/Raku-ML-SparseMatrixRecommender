@@ -1,0 +1,11 @@
+Revision history for "ML::SparseMatrixRecommender"
+
+0.0.1 2025-10-12
+    - First MVP & useful version of the package.
+    - Can be used for:
+      - Recommendation by profile and items
+      - Classification by profile
+    - The recommender pipelines of this package are already known by (can be generated with) the packages:
+        - "DSL::English::RecommenderWorkflows"
+        - "ML::NLPTemplateEngine"
+        - "DSL::Examples"
