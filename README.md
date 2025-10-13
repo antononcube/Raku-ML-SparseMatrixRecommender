@@ -12,7 +12,7 @@ Latent Semantic Indexing (LSI) functions like IDF, TF-IDF, etc. Hence, the packa
 document-term matrix creation functions and LSI application functions. I included them in the
 package since I wanted to minimize the external package dependencies.
 
-The package includes the data-sets `dfTitanic` in order to make easier the
+The package includes the data-set `dfTitanic` in order to make easier the
 writing of introductory examples and unit tests.
 
 For more theoretical description see the article
@@ -22,11 +22,13 @@ For more theoretical description see the article
 For detailed examples see the files
 ["Basic-usage.raku"](https://github.com/antononcube/Raku-ML-SparseMatrixRecommender/blob/main/examples/Basic-usage.raku)
 and
-["Classification.raku"](https://github.com/antononcube/Raku-ML-SparseMatrixRecommender/blob/main/examples/Classification.raku).
+["Classification.raku"](https://github.com/antononcube/Raku-ML-SparseMatrixRecommender/blob/main/examples/Classification.raku),
+and the Jupyter notebooks in the GitHub repository ["./docs"](https://github.com/antononcube/Raku-ML-SparseMatrixRecommender/tree/main/docs) folder.
+
 
 **Remark:** "SMR" stands for "Sparse Matrix Recommender". Most of the operations of this Raku package
 mirror the operations of the software monads "MonadicSparseMatrixRecommender", "SMRMon-R", [AAp1, AAp2] and 
-the attributes and methods of the Python package [AAp6].
+the attributes and methods of the Python package [AAp7].
 
 ------
 
@@ -150,7 +152,7 @@ my $smrObj =
 # recommendation by profile: [10 => 2 101 => 2 102 => 2 107 => 2 11 => 2 110 => 2 111 => 2 115 => 2 116 => 2 119 => 2]
 ```
 
-**Remark:** More examples can be found the directory
+**Remark:** More examples can be found in the directory
 ["./docs"](https://github.com/antononcube/Raku-ML-SparseMatrixRecommender/docs).
 
 -----
@@ -166,9 +168,9 @@ The Python package
 [AAp7], can be used to make matrices for "SparseMatrixRecommender".
 
 The Python package 
-["SSparseMatrix"](https://github.com/antononcube/Python-packages/tree/main/SSparseMatrix), [AAp5],
+["SSparseMatrix"](https://github.com/antononcube/Python-packages/tree/main/SSparseMatrix), [AAp6],
 is fundamental in both "SparseMatrixRecommender" and "LatentSemanticAnalyzer". 
-"SSparseMatrix" corresponds to the Raku package ["Math::SparseMatrix"](https://github.com/antononcube/Raku-Math-SparseMatrix), [AAp8],
+"SSparseMatrix" corresponds to the Raku package ["Math::SparseMatrix"](https://github.com/antononcube/Raku-Math-SparseMatrix), [AAp9],
 which is fundamental for this package.  
 
 Here is the Python "SparseMatrixRecommender" pipeline that corresponds to the Raku pipeline above:
@@ -199,21 +201,21 @@ smrObj = (SparseMatrixRecommender()
 ## Related R packages
 
 The package
-[`SMRMon-R`](https://github.com/antononcube/R-packages/tree/master/SMRMon-R),
+["SMRMon-R"](https://github.com/antononcube/R-packages/tree/master/SMRMon-R),
 [AAp2], implements a software monad for SMR workflows.
-Most of `SMRMon-R` functions delegate to `SparseMatrixRecommender`.
+Most of "SMRMon-R" functions delegate to `SparseMatrixRecommender", [AAp3].
 
 The package
-[`SparseMatrixRecommenderInterfaces`](https://github.com/antononcube/R-packages/tree/master/SparseMatrixRecommenderInterfaces),
-[AAp3], provides functions for interactive
+["SparseMatrixRecommenderInterfaces"](https://github.com/antononcube/R-packages/tree/master/SparseMatrixRecommenderInterfaces),
+[AAp4], provides functions for interactive
 [Shiny](https://shiny.rstudio.com)
 interfaces for the recommenders made with "SparseMatrixRecommender" and/or "SMRMon-R".
 
 The package
-[`LSAMon-R`](https://github.com/antononcube/R-packages/tree/master/LSAMon-R),
-[AAp4], can be used to make matrices for "SparseMatrixRecommender" and/or "SMRMon-R".
+["LSAMon-R"](https://github.com/antononcube/R-packages/tree/master/LSAMon-R),
+[AAp5], can be used to make matrices for "SparseMatrixRecommender" and/or "SMRMon-R".
 
-Here is the `SMRMon-R` pipeline that corresponds to the Python pipeline above:
+Here is the "SMRMon-R" pipeline that corresponds to the Raku pipeline above:
 
 ```r
 smrObj <-
@@ -273,8 +275,8 @@ the video recording [AAv1] or the benchmarks at [AAr1].
 
 ### Using grammar-based interpreters
 
-The project "Raku for Prediction", [AAr2, AAv2, AAp6], has a Domain Specific Language (DSL) grammar and interpreters
-that allow the generation of SMR code for corresponding Mathematica, Python, R, and Raku packages, [AAp9].
+The project "Raku for Prediction", [AAr2, AAv2, AAp7], has a Domain Specific Language (DSL) grammar and interpreters
+that generate SMR code for the corresponding Mathematica, Python, R, and Raku packages, [AAp10].
 
 Here is Command Line Interface (CLI) invocation example that generate code for this package:
 
@@ -282,14 +284,12 @@ Here is Command Line Interface (CLI) invocation example that generate code for t
 ToRecommenderWorkflowCode Raku 'create with dfTitanic; apply the LSI functions IDF, None, Cosine;recommend by profile 1st and male' 
 ```
 ```
-# my $obj = ML::SparseMatrixRecommender.new.create-from-wide-form(dfTitanic);
-# .apply-term-weight-functions(global-weight-func => "IDF", local-weight-func => "None", normalizer-func => "Cosine");
-# .recommend-by-profile(["1st", "male"])
+# my $obj = ML::SparseMatrixRecommender.new.create-from-wide-form(dfTitanic).apply-term-weight-functions(global-weight-func => "IDF", local-weight-func => "None", normalizer-func => "Cosine").recommend-by-profile(["1st", "male"])
 ```
 
 ### NLP Template Engine
 
-Here is an example using the NLP Template Engine, [AAp10, AAr2, AAv3]:
+Here is an example using the NLP Template Engine, [AAp11, AAr2, AAv3], (which uses LLMs to fill in static templates):
 
 ```raku
 use ML::NLPTemplateEngine;
@@ -305,6 +305,38 @@ use ML::NLPTemplateEngine;
 # .echo-value();
 ```
 
+### By DSL examples
+
+Instead of using grammars the individual commands translation can be done using LLMs and few-shot training examples,
+see ["DSL::Examples"](https://raku.land/zef:antononcube/DSL::Examples), [AAp12]. Here is an example:
+
+```raku
+use DSL::Examples;
+my &llm-pipeline-segment = llm-example-function(dsl-examples()<Raku><SMRMon>);
+
+my $spec = q:to/END/;
+new recommender;
+create from @dsData; 
+apply LSI functions IDF, None, Cosine; 
+recommend by profile for passengerSex:male, and passengerClass:1st;
+join across with @dsData on "id";
+echo the pipeline value;
+classify by profile passengerSex:female, and passengerClass:1st on the tag passengerSurvival;
+echo value
+END
+
+my @commands = $spec.lines;
+
+@commands
+        .map({ .&llm-pipeline-segment })
+        .map({ .subst(/:i Output ':'?/):g })
+        .join("\n.")
+```
+```
+#ERROR: Undeclared routine:
+#ERROR:     llm-example-function used at line 3
+# Nil
+```
 
 ------
 
@@ -328,57 +360,62 @@ use ML::NLPTemplateEngine;
 
 [AAp2] Anton Antonov,
 [SMRMon, R package](https://github.com/antononcube/R-packages/tree/master/SMRMon-R)
-(2019),
+(2019-2024),
 [R-packages at GitHub/antononcube](https://github.com/antononcube/R-packages).
 
 [AAp3] Anton Antonov,
+[SparseMatrixRecommender, R package](https://github.com/antononcube/R-packages/tree/master/SparseMatrixRecommender)
+(2019-2024),
+[R-packages at GitHub/antononcube](https://github.com/antononcube/R-packages).
+
+[AAp4] Anton Antonov,
 [Sparse Matrix Recommender framework interface functions](https://github.com/antononcube/R-packages/tree/master/SparseMatrixRecommenderInterfaces)
 (2019),
 [R-packages at GitHub/antononcube](https://github.com/antononcube/R-packages).
 
-[AAp4] Anton Antonov,
+[AAp5] Anton Antonov,
 [LSAMon, R package](https://github.com/antononcube/R-packages/tree/master/LSAMon-R)
 (2019),
 [R-packages at GitHub/antononcube](https://github.com/antononcube/R-packages).
 
 ### Python packages
 
-[AAp5] Anton Antonov,
+[AAp6] Anton Antonov,
 [SSparseMatrix, Python package](https://github.com/antononcube/Python-packages/tree/master/SSparseMatrix)
 (2021),
 [Python-packages at GitHub/antononcube](https://github.com/antononcube/Python-packages).
 
-[AAp6] Anton Antonov,
+[AAp7] Anton Antonov,
 [SparseMatrixRecommender, Python package](https://github.com/antononcube/Python-packages/tree/master/SparseMatrixRecommender)
 (2021),
 [Python-packages at GitHub/antononcube](https://github.com/antononcube/Python-packages).
 
-[AAp7] Anton Antonov,
+[AAp8] Anton Antonov,
 [LatentSemanticAnalyzer, Python package](https://github.com/antononcube/Python-packages/tree/main/LatentSemanticAnalyzer)
 (2021),
 [Python-packages at GitHub/antononcube](https://github.com/antononcube/Python-packages).
 
 ### Raku packages
 
-[AAp8] Anton Antonov,
+[AAp9] Anton Antonov,
 [Math::SparseMatrix, Raku package](https://github.com/antononcube/Raku-Math-SparseMatrix),
 (2024-2025),
 [GitHub/antononcube](https://github.com/antononcube).
 ([At raku.land](https://raku.land/zef:antononcube/Math::SparseMatrix)).
 
-[AAp9] Anton Antonov,
+[AAp10] Anton Antonov,
 [DSL::English::RecommenderWorkflows, Raku package](https://github.com/antononcube/Raku-DSL-English-RecommenderWorkflows),
 (2018-2022),
 [GitHub/antononcube](https://github.com/antononcube).
 ([At raku.land](https://raku.land/zef:antononcube/DSL::English::RecommenderWorkflows)).
 
-[AAp10] Anton Antonov,
+[AAp11] Anton Antonov,
 [ML::NLPTemplateEngine, Raku package](https://github.com/antononcube/Raku-ML-NLPTemplateEngine),
 (2023-2025),
 [GitHub/antononcube](https://github.com/antononcube).
 ([At raku.land](https://raku.land/zef:antononcube/ML::NLPTemplateEngine)).
 
-[AAp11] Anton Antonov,
+[AAp12] Anton Antonov,
 [DSL::Examples, Raku package](https://github.com/antononcube/Raku-DSL-Examples),
 (2024-2025),
 [GitHub/antononcube](https://github.com/antononcube).
