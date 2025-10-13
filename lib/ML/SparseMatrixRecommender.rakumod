@@ -194,7 +194,11 @@ class ML::SparseMatrixRecommender
     }
 
     multi method echo-value(Str:D :$note = '', :&with = &say, :&as = WhateverCode) {
-        &as.defined ?? &with($note, &as($!value)) !! &with($note, $!value);
+        if $note {
+            &as.defined ?? &with($note, &as($!value)) !! &with($note, $!value);
+        } else {
+            &as.defined ?? &with(&as($!value)) !! &with($!value);
+        }
         self
     }
 
