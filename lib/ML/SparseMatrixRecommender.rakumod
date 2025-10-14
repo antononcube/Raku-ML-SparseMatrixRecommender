@@ -231,20 +231,26 @@ class ML::SparseMatrixRecommender
     ##========================================================
     method create-item-tag-matrix(
             @data where @data.all ~~ Map:D,
-            Str:D $item-key,
-            Str:D $tag-key,
+            Str:D :$item-key,
+            Str:D :$tag-key,
+            :$weight-key = Whatever,
             Bool:D :$add-tag-types-to-column-names = True,
             Str:D :$tag-value-separator = ':'
             --> Math::SparseMatrix:D) {
         my @edge-dataset =
                 do if $add-tag-types-to-column-names {
-                    @data.map({ %( :from($_{$item-key}), :to($tag-key ~ $tag-value-separator ~ $_{$tag-key}), :weight(1) ) })
+                    @data.map({ %( :from($_{$item-key}),
+                                   :to($tag-key ~ $tag-value-separator ~ $_{$tag-key}),
+                                   :weight($weight-key ~~ Str:D ?? ($_{$weight-key} // 1) !! 1) ) })
                 } else {
-                    @data.map({ %( :from($_{$item-key}), :to($_{$tag-key}), :weight(1) ) })
+                    @data.map({ %( :from($_{$item-key}),
+                                   :to($_{$tag-key}),
+                                   :weight($weight-key ~~ Str:D ?? ($_{$weight-key} // 1) !! 1)) })
                 }
         return Math::SparseMatrix.new(:@edge-dataset):directed;
     }
 
+    #| Recommender elements population from a wide form dataset.
     method create-from-wide-form(
             @data where @data.all ~~ Map:D,
             :$tag-types is copy = Whatever,
@@ -254,7 +260,7 @@ class ML::SparseMatrixRecommender
             *%extra) {
         if $item-key.isa(Whatever) {
             $item-key = @data.head.keys.first({ $_ ~~ /:i id/ });
-            die 'Cannot automatically deduces the item column name (item-key)'
+            die 'Cannot automatically deduce the item column name (item-key)'
             unless $item-key.defined;
         }
 
@@ -267,8 +273,44 @@ class ML::SparseMatrixRecommender
 
         $tag-types .= grep({$_ ne $item-key});
         my %matrices = |$tag-types.map(-> $type {
-            $type => self.create-item-tag-matrix(@data, $item-key, $type, :$add-tag-types-to-column-names, :$tag-value-separator)
+            $type => self.create-item-tag-matrix(
+                    @data,
+                    :$item-key,
+                    tag-key => $type,
+                    weight-key => Whatever,
+                    :$add-tag-types-to-column-names,
+                    :$tag-value-separator)
         });
+
+        return self.create-from-matrices(%matrices, |%extra);
+    }
+
+    #| Recommender elements population from a long form dataset.
+    method create-from-long-form(
+            @data where @data.all ~~ Map:D,                     #= A data frame with long form(at) data.
+            :$item-column-name = "Item",                         #= Name of the column with the items.
+            :$tag-type-column-name = "TagType",                  #= Name of the column with the tag types.
+            :$tag-column-name = "Tag",                           #= Name of the column with the tags.
+            :$weight-column-name = "Weight",                     #= Name of the column with the tag weights.
+            Bool:D :$add-tag-types-to-column-names = False,     #= Should tag types be used as prefixes or not?
+            Str:D :$tag-value-separator = ":",                  #= String to separate tag-type prefixes from tags (in the column names of the recommendation matrix).
+            Bool:D :$numerical-columns-as-categorical = False,  #= Should numerical columns be turned into categorical or not?
+            *%extra
+                                 ) {
+
+        my %matrices =
+                @data
+                .classify(*{$tag-type-column-name}).kv
+                .map(-> $type, @subset {
+                    $type =>
+                            self.create-item-tag-matrix(
+                                    @subset,
+                                    item-key => $item-column-name,
+                                    tag-key => $tag-column-name,
+                                    weight-key => $weight-column-name,
+                                    :$add-tag-types-to-column-names,
+                                    :$tag-value-separator)
+                });
 
         return self.create-from-matrices(%matrices, |%extra);
     }
