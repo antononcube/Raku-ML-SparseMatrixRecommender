@@ -1,5 +1,12 @@
 # Sparse Matrix Recommender (SMR) Raku package
 
+[![Actions Status](https://github.com/antononcube/Raku-ML-SparseMatrixRecommender/actions/workflows/linux.yml/badge.svg)](https://github.com/antononcube/Raku-ML-SparseMatrixRecommender/actions)
+[![Actions Status](https://github.com/antononcube/Raku-ML-SparseMatrixRecommender/actions/workflows/macos.yml/badge.svg)](https://github.com/antononcube/Raku-ML-SparseMatrixRecommender/actions)
+[![Actions Status](https://github.com/antononcube/Raku-ML-SparseMatrixRecommender/actions/workflows/windows.yml/badge.svg)](https://github.com/antononcube/Raku-ML-SparseMatrixRecommender/actions)
+
+[![](https://raku.land/zef:antononcube/ML::SparseMatrixRecommender/badges/version)](https://raku.land/zef:antononcube/ML::SparseMatrixRecommender)
+[![License: Artistic-2.0](https://img.shields.io/badge/License-Artistic%202.0-0298c3.svg)](https://opensource.org/licenses/Artistic-2.0)
+
 ## Introduction
 
 This Raku package, "ML::SparseMatrixRecommender", has different functions for computations of recommendations
@@ -298,10 +305,10 @@ use ML::NLPTemplateEngine;
 ```
 ```
 # my $smrObj = ML::SparseMatrixRecommender.new
-# .create-from-wide-form(["1st"]set, item-column-name='id', :add-tag-types-to-column-names, tag-value-separator=':')
+# .create-from-wide-form(dfTitanic, item-column-name='id', :add-tag-types-to-column-names, tag-value-separator=':')
 # .apply-term-weight-functions('IDF', 'None', 'Cosine')
-# .recommend-by-profile(["male"], 12, :!normalize)
-# .join-across(["1st"]set)
+# .recommend-by-profile(["1st"], 12, :!normalize)
+# .join-across(dfTitanic)
 # .echo-value();
 ```
 
@@ -312,6 +319,7 @@ see ["DSL::Examples"](https://raku.land/zef:antononcube/DSL::Examples), [AAp12].
 
 ```raku
 use DSL::Examples;
+use LLM::Functions;
 my &llm-pipeline-segment = llm-example-function(dsl-examples()<Raku><SMRMon>);
 
 my $spec = q:to/END/;
@@ -329,13 +337,18 @@ my @commands = $spec.lines;
 
 @commands
         .map({ .&llm-pipeline-segment })
-        .map({ .subst(/:i Output ':'?/):g })
+        .map({ .subst(/:i Output \h* ':'?/):g })
         .join("\n.")
 ```
 ```
-#ERROR: Undeclared routine:
-#ERROR:     llm-example-function used at line 3
-# Nil
+# ML::SparseMatrixRecommender.new
+# .create(@dsData)
+# .apply-term-weight-functions('IDF', 'None', 'Cosine')
+# .recommend-by-profile({'passengerSex.male' => 1, 'passengerClass.1st' => 1})
+# .join-across(@dsData, on => 'id')
+# .echo-value()
+# .classify-by-profile('passengerSurvival', {'passengerSex.female' => 1, 'passengerClass.1st' => 1})
+# .echo-value()
 ```
 
 ------

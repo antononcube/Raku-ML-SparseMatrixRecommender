@@ -1,5 +1,12 @@
 # Sparse Matrix Recommender (SMR) Raku package
 
+[![Actions Status](https://github.com/antononcube/Raku-ML-SparseMatrixRecommender/actions/workflows/linux.yml/badge.svg)](https://github.com/antononcube/Raku-ML-SparseMatrixRecommender/actions)
+[![Actions Status](https://github.com/antononcube/Raku-ML-SparseMatrixRecommender/actions/workflows/macos.yml/badge.svg)](https://github.com/antononcube/Raku-ML-SparseMatrixRecommender/actions)
+[![Actions Status](https://github.com/antononcube/Raku-ML-SparseMatrixRecommender/actions/workflows/windows.yml/badge.svg)](https://github.com/antononcube/Raku-ML-SparseMatrixRecommender/actions)
+
+[![](https://raku.land/zef:antononcube/ML::SparseMatrixRecommender/badges/version)](https://raku.land/zef:antononcube/ML::SparseMatrixRecommender)
+[![License: Artistic-2.0](https://img.shields.io/badge/License-Artistic%202.0-0298c3.svg)](https://opensource.org/licenses/Artistic-2.0)
+
 ## Introduction
 
 This Raku package, "ML::SparseMatrixRecommender", has different functions for computations of recommendations
@@ -298,6 +305,7 @@ see ["DSL::Examples"](https://raku.land/zef:antononcube/DSL::Examples), [AAp12].
 
 ```raku
 use DSL::Examples;
+use LLM::Functions;
 my &llm-pipeline-segment = llm-example-function(dsl-examples()<Raku><SMRMon>);
 
 my $spec = q:to/END/;
@@ -315,7 +323,7 @@ my @commands = $spec.lines;
 
 @commands
         .map({ .&llm-pipeline-segment })
-        .map({ .subst(/:i Output ':'?/):g })
+        .map({ .subst(/:i Output \h* ':'?/):g })
         .join("\n.")
 ```
 
