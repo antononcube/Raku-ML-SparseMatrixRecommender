@@ -46,5 +46,24 @@ is
 ## 5
 is $smr-new.take-M eqv $smr.take-M, True, "M matrices are equal";
 
+subtest {
+    my @long =
+            <passengerAge passengerClass passengerSex passengerSurvival>
+            .map( -> $tag-type { $dsData.map({ %( id => $_<id>, Variable => $tag-type, Value => $_{$tag-type}) }) })
+            .flat(1);
+
+    is @long ~~ (Array:D | List:D | Seq:D) && @long.all ~~ Map:D, True, 'expected long form dataset type';
+
+    is @long.elems, $dsData.elems * 4, 'expected length';
+
+    my $smrObjLong = ML::SparseMatrixRecommender.new
+            .create-from-long-form(@long, item-column-name => 'id', tag-type-column-name => 'Variable', tag-column-name => 'Value');
+
+    isa-ok $smrObjLong,  ML::SparseMatrixRecommender:D;
+
+    is $smrObjLong.take-M.rows-count, $dsData.elems, 'expected number of rows of the recommender matrix';
+    is $smrObjLong.take-M.columns-count, 17, 'expected number of columns of the recommender matrix';
+
+}, 'creation from long form';
 
 done-testing;
