@@ -337,7 +337,7 @@ my @commands = $spec.lines;
 
 @commands
         .map({ .&llm-pipeline-segment })
-        .map({ .subst(/:i Output \h* ':'?/):g })
+        .map({ .subst(/:i Output \h* ':'?/, :g).trim })
         .join("\n.")
 ```
 ```
