@@ -1,0 +1,68 @@
+use Test;
+use ML::SparseMatrixRecommender;
+use ML::SparseMatrixRecommender::Utilities;
+use Math::SparseMatrix;
+
+
+#----------------------------------------------------------
+# Tested in 01-creation.rakutest
+#----------------------------------------------------------
+my $dsData = ML::SparseMatrixRecommender::Utilities::get-titanic-dataset();
+$dsData = $dsData.map({ $_<id> = "id.{$_<id>}"; $_});
+
+my $smr =
+        ML::SparseMatrixRecommender
+                .new
+                .create-from-wide-form(
+                    $dsData,
+                    item-column-name => 'id',
+                    tag-types => Whatever,
+                    :!add-tag-types-to-column-names
+                )
+                .apply-term-weight-functions(
+                    global-weight-func => "None",
+                    local-weight-func  => "None",
+                    normalizer-func    => "None"
+                );
+#----------------------------------------------------------
+
+## 1
+subtest {
+    my @dsQuery = $dsData.grep({ $_<passengerSex> eq 'male' || $_<passengerClass> eq '1st'});
+
+    ok $smr.retrieve-by-query-elements(should => <male 1st>, must => Empty, must-not => Empty);
+    my $res = $smr.retrieve-by-query-elements(should => <male 1st>, must => Empty, must-not => Empty).take-value;
+
+    is $res.elems, @dsQuery.elems, 'expected retrieved elements length';
+    is $res.keys.sort, @dsQuery.map(*<id>).sort, 'expected keys';
+
+    my $res2 = $smr.recommend-by-profile(<male 1st>, Inf).take-value.Hash;
+
+    is-deeply $res.keys.sort, $res2.keys.sort, 'expected should equvalence'
+
+}, 'should';
+
+## 2
+subtest {
+    my @dsQuery = $dsData.grep({
+            $_<passengerSex> eq 'male' &
+            $_<passengerClass> eq '1st' &
+            $_<passengerSurvival> ne 'survived'
+    });
+
+    ok $smr.retrieve-by-query-elements(should => Empty, must => <male 1st>, must-not => ['survived',]);
+    my $res = $smr.retrieve-by-query-elements(should => Empty, must => <male 1st>, must-not => ['survived',]).take-value;
+
+    is $res.elems, @dsQuery.elems, 'expected retrieved elements length';
+    is $res.keys.sort, @dsQuery.map(*<id>).sort, 'expected keys';
+
+    # Verify we get same IDs having non-empty should.
+    my $res2 = $smr.retrieve-by-query-elements(should => ['30',], must => <male 1st>, must-not => ['survived',]).take-value;
+    is $res2.elems, $res.elems, 'expected retrieved elements length when should is non-empty';
+
+    # Verify we get same IDs adding unknown tags
+    my $res3 = $smr.retrieve-by-query-elements(should => <30 age:30>, must => <male 1st class::1st>, must-not => <survived survival:survived>).take-value;
+    is $res3.elems, $res.elems, 'expected retrieved elements length when unknown tags';
+}, 'must and must not';
+
+done-testing;

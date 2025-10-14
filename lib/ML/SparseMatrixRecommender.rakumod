@@ -618,7 +618,78 @@ class ML::SparseMatrixRecommender
     ##========================================================
     ## Retrieve by query elements
     ##========================================================
-    # TBD...
+    method retrieve-by-query-elements(
+            :@should = [],
+            :@must = [],
+            :@must-not = [],
+            :$must-type = "intersection",
+            :$must-not-type = "union",
+            :$ignore-unknown = False
+                                      ) {
+        die "The first argument, should, is expected to be a list of tags."
+        unless @should.all ~~ Str:D;
+        die "The second argument, must, is expected to be a list of tags."
+        unless @must.all ~~ Str:D;
+        die "The third argument, must-not, is expected to be a list of tags."
+        unless @must-not.all ~~ Str:D;
+
+        if @should.elems + @must.elems + @must-not.elems == 0 {
+            note "All query elements are empty.";
+            return self;
+        }
+
+        # Should
+        my %should-items;
+        if @should.elems > 0 && @must.elems > 0 {
+            # Both should and must are present
+            my $p-vec-should = self.to-profile-vector(@should.Mix, :$ignore-unknown);
+            my $p-vec-must = self.to-profile-vector(@must.Mix, :$ignore-unknown);
+            %should-items = self.recommend-by-profile(
+                    $p-vec-should.add($p-vec-must),
+                    Inf,
+                    :$ignore-unknown
+                    ).take-value;
+        } elsif @should.elems > 0 && @must.elems == 0 && @must-not.elems == 0 {
+            # Only should is not empty
+            my $p-vec-should = self.to-profile-vector(@should.Mix, :$ignore-unknown);
+            my $res = self.recommend-by-profile($p-vec-should, Inf, :$ignore-unknown).take-value;
+            self.set-value($res.Hash);
+            return self;
+        } else {
+            %should-items = self.take-M().row-names.map({ $_ => 1 }).Hash;
+        }
+
+        my %res = %should-items;
+
+        # Must
+        my @must-items;
+        if @must.elems > 0 {
+            @must-items = self.filter-by-profile(@must, filter-type => $must-type, :$ignore-unknown).take-value;
+            if @must-items.elems == 0 {
+                note "No items were obtained by querying with the must tags.";
+            }
+        }
+
+        if @must-items.elems > 0 {
+            %res = %res.keys (&) @must-items;
+        }
+
+        # Must not
+        my @must-not-items;
+        if @must-not.elems > 0 {
+            @must-not-items = self.filter-by-profile(@must-not, filter-type => $must-not-type, :$ignore-unknown).take-value;
+            if @must-not-items.elems == 0 {
+                note "No items were obtained by querying with the must not tags.";
+            }
+        }
+
+        if @must-not-items.elems > 0 {
+            %res = %res.keys (-) @must-not-items;
+        }
+
+        self.set-value(%res);
+        return self;
+    }
 
     ##========================================================
     ## Classify
