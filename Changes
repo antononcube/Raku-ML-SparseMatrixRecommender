@@ -1,5 +1,11 @@
 Revision history for "ML::SparseMatrixRecommender"
 
+0.0.2 2025-10-13
+    - Better README (minor tweaks.)
+    - Better .echo-value().
+    - Creation from long form, .create-from-long-form() .
+    - Retrieving by query elements (should, must, must-not), .retrieve-by-query-elements() .
+
 0.0.1 2025-10-12
     - First MVP & useful version of the package.
     - Can be used for:
