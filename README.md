@@ -350,6 +350,23 @@ my @commands = $spec.lines;
 # .classify-by-profile('passengerSurvival', {'passengerSex.female' => 1, 'passengerClass.1st' => 1})
 # .echo-value()
 ```
+------
+
+## Performance
+
+The package versions less than 0.1.0 do not use the fastest sparse matrix multiplications.
+(Based on "NativeCall", i.e. "Math::SparseMatrix::Native".)
+The reason for this is that I am not sure what is the best design. Here are my considerations:
+
+- The "native" calculations should be switched on and off.
+    - Useful for comparison, tracing, and testing purposes.
+- It is not clear to me where the native computations should be specified/invoked:
+    1. Should the native coercion be implemented at "Math::SparseMatrix" level?
+    - I.e. if one of the multiplier is native the other is turned into native too.
+    2. Should "Math::SparseMatrixRecommender" decide on "native or not" depending on the matrices and a flag?
+- The filtering out of recommendation history is currently too slow.
+    - Currently, sparse elementwise multiplication is used.
+    - There are several alternatives to _try out_ (and see which is faster.)
 
 ------
 

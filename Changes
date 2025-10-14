@@ -1,6 +1,6 @@
 Revision history for "ML::SparseMatrixRecommender"
 
-0.0.2 2025-10-13
+0.0.2 2025-10-14
     - Better README (minor tweaks.)
     - Better .echo-value().
     - Creation from long form, .create-from-long-form() .
