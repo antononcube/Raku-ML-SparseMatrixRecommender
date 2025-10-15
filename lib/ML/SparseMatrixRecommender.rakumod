@@ -329,7 +329,7 @@ class ML::SparseMatrixRecommender
         # Check if the row names of the matrices are the same
         if !reduce(&infix:<eqv>, @rowNames».sort».List) {
             @rowNames = $matrices.map(*.value.row-names).flat.unique.sort;
-            %!matrices = $matrices.map({ $_.value.impose-rows(@rowNames) })
+            %!matrices = $matrices.map({ $_.key => $_.value.impose-row-names(@rowNames) })
         } else {
             %!matrices = |$matrices
         }
