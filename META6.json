@@ -1,7 +1,7 @@
 {
     "name": "ML::SparseMatrixRecommender",
     "description": "Sparse matrix recommender framework.",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "authors": [
         "Anton Antonov"
     ],
