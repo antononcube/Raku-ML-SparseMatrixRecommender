@@ -45,8 +45,8 @@ subtest {
 ## 2
 subtest {
     my @dsQuery = $dsData.grep({
-            $_<passengerSex> eq 'male' &
-            $_<passengerClass> eq '1st' &
+            $_<passengerSex> eq 'male' &&
+            $_<passengerClass> eq '1st' &&
             $_<passengerSurvival> ne 'survived'
     });
 
@@ -58,11 +58,11 @@ subtest {
 
     # Verify we get same IDs having non-empty should.
     my $res2 = $smr.retrieve-by-query-elements(should => ['30',], must => <male 1st>, must-not => ['survived',]).take-value;
-    is $res2.elems, $res.elems, 'expected retrieved elements length when should is non-empty';
+    is $res2.elems, @dsQuery.elems, 'expected retrieved elements length when should is non-empty';
 
     # Verify we get same IDs adding unknown tags
     my $res3 = $smr.retrieve-by-query-elements(should => <30 age:30>, must => <male 1st class::1st>, must-not => <survived survival:survived>).take-value;
-    is $res3.elems, $res.elems, 'expected retrieved elements length when unknown tags';
+    is $res3.elems, @dsQuery.elems, 'expected retrieved elements length when unknown tags';
 }, 'must and must not';
 
 done-testing;
