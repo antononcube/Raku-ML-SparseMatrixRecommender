@@ -280,7 +280,7 @@ the video recording [AAv1] or the benchmarks at [AAr1].
 ### Using grammar-based interpreters
 
 The project "Raku for Prediction", [AAr2, AAv2, AAp7], has a Domain Specific Language (DSL) grammar and interpreters
-that generate SMR code for the corresponding Mathematica, Python, R, and Raku packages, [AAp10].
+that generate SMR code for the corresponding Mathematica, Python, R, and Raku packages, [AAp11].
 
 Here is Command Line Interface (CLI) invocation example that generate code for this package:
 
@@ -290,7 +290,7 @@ ToRecommenderWorkflowCode Raku 'create with dfTitanic; apply the LSI functions I
 
 ### NLP Template Engine
 
-Here is an example using the NLP Template Engine, [AAp11, AAr2, AAv3], (which uses LLMs to fill in static templates):
+Here is an example using the NLP Template Engine, [AAp12, AAr2, AAv3], (which uses LLMs to fill in static templates):
 
 ```raku
 use ML::NLPTemplateEngine;
@@ -301,7 +301,7 @@ use ML::NLPTemplateEngine;
 ### By DSL examples
 
 Instead of using grammars the individual commands translation can be done using LLMs and few-shot training examples,
-see ["DSL::Examples"](https://raku.land/zef:antononcube/DSL::Examples), [AAp12]. Here is an example:
+see ["DSL::Examples"](https://raku.land/zef:antononcube/DSL::Examples), [AAp13]. Here is an example:
 
 ```raku
 use DSL::Examples;
@@ -331,20 +331,12 @@ my @commands = $spec.lines;
 
 ## Performance
 
-The package versions less than 0.1.0 do not use the fastest sparse matrix multiplications. 
-(Based on "NativeCall", i.e. "Math::SparseMatrix::Native".)
-The reason for this is that I am not sure what is the best design. Here are my considerations:
+Two performance topics are more important than rest:
 
-- The "native" calculations should be switched on and off.
-  - Useful for comparison, tracing, and testing purposes.
-- It is not clear to me where the native computations should be specified/invoked:
-  1. Should the native coercion be implemented at "Math::SparseMatrix" level?
-    - I.e. if one of the multiplier is native the other is turned into native too.
-  2. Should "Math::SparseMatrixRecommender" decide on "native or not" depending on the matrices and a flag?
-- The filtering out of recommendation history is currently too slow.
-  - Currently, sparse elementwise multiplication is used. 
-  - There are several alternatives to _try out_ (and see which is faster.)
+1. Recommender object creation
+2. Recommendations computations
 
+See the dedicated document ["Performance.md"](./docs/Performance.md) for a detailed discussion. 
 
 ------
 
@@ -412,18 +404,24 @@ The reason for this is that I am not sure what is the best design. Here are my c
 ([At raku.land](https://raku.land/zef:antononcube/Math::SparseMatrix)).
 
 [AAp10] Anton Antonov,
+[Math::SparseMatrix::Native, Raku package](https://github.com/antononcube/Raku-Math-SparseMatrix-Native),
+(2024-2025),
+[GitHub/antononcube](https://github.com/antononcube).
+([At raku.land](https://raku.land/zef:antononcube/Math::SparseMatrix::Native)).
+
+[AAp11] Anton Antonov,
 [DSL::English::RecommenderWorkflows, Raku package](https://github.com/antononcube/Raku-DSL-English-RecommenderWorkflows),
 (2018-2022),
 [GitHub/antononcube](https://github.com/antononcube).
 ([At raku.land](https://raku.land/zef:antononcube/DSL::English::RecommenderWorkflows)).
 
-[AAp11] Anton Antonov,
+[AAp12] Anton Antonov,
 [ML::NLPTemplateEngine, Raku package](https://github.com/antononcube/Raku-ML-NLPTemplateEngine),
 (2023-2025),
 [GitHub/antononcube](https://github.com/antononcube).
 ([At raku.land](https://raku.land/zef:antononcube/ML::NLPTemplateEngine)).
 
-[AAp12] Anton Antonov,
+[AAp13] Anton Antonov,
 [DSL::Examples, Raku package](https://github.com/antononcube/Raku-DSL-Examples),
 (2024-2025),
 [GitHub/antononcube](https://github.com/antononcube).
