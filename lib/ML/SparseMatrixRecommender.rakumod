@@ -626,6 +626,7 @@ class ML::SparseMatrixRecommender
         if $type.lc eq 'intersection' {
             my $profileVec = self.to-profile-vector(@prof.Mix);
             my %sVec = self.take-M.unitize(:clone).dot($profileVec).row-sums(:pairs);
+            # Number of non-zero elements of the profile vector
             my $n = $profileVec.column-sums.head;
             %profMix = %sVec.grep({ $_.value >= $n });
 
@@ -674,7 +675,7 @@ class ML::SparseMatrixRecommender
             # Both should and must are present
             my $p-vec-should = self.to-profile-vector(@should.Mix, :$ignore-unknown);
             my $p-vec-must = self.to-profile-vector(@must.Mix, :$ignore-unknown);
-            %should-items = self.recommend-by-profile(
+            %should-items = |self.recommend-by-profile(
                     $p-vec-should.add($p-vec-must),
                     Inf,
                     :$ignore-unknown
@@ -701,20 +702,20 @@ class ML::SparseMatrixRecommender
         }
 
         if @must-items.elems > 0 {
-            %res = |(%res.keys (&) @must-items).Hash;
+            %res = %res.keys (&) @must-items;
         }
 
         # Must not
         my @must-not-items;
         if @must-not.elems > 0 {
-            @must-not-items = self.filter-by-profile(@must-not, filter-type => $must-not-type, :$ignore-unknown).take-value;
+            @must-not-items = |self.filter-by-profile(@must-not, filter-type => $must-not-type, :$ignore-unknown).take-value;
             if @must-not-items.elems == 0 {
                 note "No items were obtained by querying with the must not tags.";
             }
         }
 
         if @must-not-items.elems > 0 {
-            %res = |(%res.keys (-) @must-not-items).Hash;
+            %res = %res.keys (-) @must-not-items;
         }
 
         self.set-value(%res);
