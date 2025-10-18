@@ -694,14 +694,14 @@ class ML::SparseMatrixRecommender
         # Must
         my @must-items;
         if @must.elems > 0 {
-            @must-items = self.filter-by-profile(@must, filter-type => $must-type, :$ignore-unknown).take-value;
+            @must-items = |self.filter-by-profile(@must, filter-type => $must-type, :$ignore-unknown).take-value;
             if @must-items.elems == 0 {
                 note "No items were obtained by querying with the must tags.";
             }
         }
 
         if @must-items.elems > 0 {
-            %res = %res.keys (&) @must-items;
+            %res = |(%res.keys (&) @must-items).Hash;
         }
 
         # Must not
@@ -714,7 +714,7 @@ class ML::SparseMatrixRecommender
         }
 
         if @must-not-items.elems > 0 {
-            %res = %res.keys (-) @must-not-items;
+            %res = |(%res.keys (-) @must-not-items).Hash;
         }
 
         self.set-value(%res);
