@@ -15,6 +15,7 @@ class ML::SparseMatrixRecommender
     has %!tag-type-weights = %();
     has $!data = Whatever;
     has $!value = Whatever;
+    has Bool:D $!native = False;
 
     ##========================================================
     ## Performance
@@ -53,7 +54,7 @@ class ML::SparseMatrixRecommender
                     column-names => [$item-name, ]);
 
         if !$column { $mat .= transpose }
-
+        if $!native { $mat.to-adapted }
         return $mat;
     }
 
@@ -84,7 +85,7 @@ class ML::SparseMatrixRecommender
                 );
 
         if $column { $mat .= transpose }
-
+        if $!native { $mat.to-adapted }
         return $mat;
     }
 
@@ -205,25 +206,37 @@ class ML::SparseMatrixRecommender
     ##========================================================
     ## BUILD
     ##========================================================
-    submethod BUILD(:$!M = Whatever, :%!matrices = %(), :%!tag-type-weights = %(), :$!data = Whatever, :$!value = Whatever) {
+    submethod BUILD(:$!M = Whatever,
+                    :%!matrices = %(),
+                    :%!tag-type-weights = %(),
+                    :$!data = Whatever,
+                    :$!value = Whatever,
+                    Bool:D :$!native = False) {
     }
 
-    multi method new(:$M = Whatever, :%matrices = %(), :%tag-type-weights = %(), :$data = Whatever, :$value = Whatever) {
-        self.bless(:$M, :%matrices, :%tag-type-weights, :$data, :$value);
+    multi method new(:$M = Whatever,
+                     :%matrices = %(),
+                     :%tag-type-weights = %(),
+                     :$data = Whatever,
+                     :pipeline-value(:$value) = Whatever,
+                     Bool:D :$native = False) {
+        self.bless(:$M, :%matrices, :%tag-type-weights, :$data, :$value, :$native);
     }
 
-    multi method new($matrices, :$value = Whatever) {
+    multi method new($matrices,
+                     :pipeline-value(:$value) = Whatever,
+                     Bool:D :$native = False) {
         die 'The first argument is expected to be a hashmap of Math::SparseMatrix objects.'
         unless $matrices ~~ Map:D && $matrices.values.all ~~ Math::SparseMatrix:D;
         my $M = reduce({$^a.column-bind($^b)}, |$matrices.values);
-        self.bless(:$M, :$matrices, :$value);
+        self.bless(:$M, :$matrices, :$value, :$native);
     }
 
     ##========================================================
     ## Clone
     ##========================================================
     method clone(::?CLASS:D: --> ::?CLASS:D) {
-        return ML::SparseMatrixRecommender.new(:$!M, :%!matrices, :%!tag-type-weights, :$!data, :$!value);
+        return ML::SparseMatrixRecommender.new(:$!M, :%!matrices, :%!tag-type-weights, :$!data, :$!value, :$!native);
     }
 
     ##========================================================
@@ -231,21 +244,34 @@ class ML::SparseMatrixRecommender
     ##========================================================
     method create-item-tag-matrix(
             @data where @data.all ~~ Map:D,
-            Str:D :$item-key,
-            Str:D :$tag-key,
-            :$weight-key = Whatever,
+            Str:D :item-column-name(:$item-key)!,
+            Str:D :tag-type-column-name(:$tag-type-key)!,
+            Str:D :tag-column-name(:$tag-key)!,
+            :weight-column-name(:$weight-key) = Whatever,
             Bool:D :$add-tag-types-to-column-names = True,
             Str:D :$tag-value-separator = ':'
             --> Math::SparseMatrix:D) {
         my @edge-dataset =
                 do if $add-tag-types-to-column-names {
-                    @data.map({ %( :from($_{$item-key}),
-                                   :to($tag-key ~ $tag-value-separator ~ $_{$tag-key}),
-                                   :weight($weight-key ~~ Str:D ?? ($_{$weight-key} // 1) !! 1) ) })
+                    if $weight-key ~~ Str:D {
+                        @data.map({ %( :from($_{$item-key}),
+                                       :to($tag-type-key ~ $tag-value-separator ~ $_{$tag-key}),
+                                       :weight($_{$weight-key} // 1) ) })
+                    } else {
+                        @data.map({ %( :from($_{$item-key}),
+                                       :to($tag-type-key ~ $tag-value-separator ~ $_{$tag-key}),
+                                       :weight(1) ) })
+                    }
                 } else {
-                    @data.map({ %( :from($_{$item-key}),
-                                   :to($_{$tag-key}),
-                                   :weight($weight-key ~~ Str:D ?? ($_{$weight-key} // 1) !! 1)) })
+                    if $weight-key ~~ Str:D {
+                        @data.map({ %( :from($_{$item-key}),
+                                       :to($_{$tag-key}),
+                                       :weight($_{$weight-key} // 1) ) })
+                    } else {
+                        @data.map({ %( :from($_{$item-key}),
+                                       :to($_{$tag-key}),
+                                       :weight(1) ) })
+                    }
                 }
         return Math::SparseMatrix.new(:@edge-dataset):directed;
     }
@@ -276,6 +302,7 @@ class ML::SparseMatrixRecommender
             $type => self.create-item-tag-matrix(
                     @data,
                     :$item-key,
+                    tag-type-key => $type,
                     tag-key => $type,
                     weight-key => Whatever,
                     :$add-tag-types-to-column-names,
@@ -288,10 +315,10 @@ class ML::SparseMatrixRecommender
     #| Recommender elements population from a long form dataset.
     method create-from-long-form(
             @data where @data.all ~~ Map:D,                     #= A data frame with long form(at) data.
-            :$item-column-name = "Item",                         #= Name of the column with the items.
-            :$tag-type-column-name = "TagType",                  #= Name of the column with the tag types.
-            :$tag-column-name = "Tag",                           #= Name of the column with the tags.
-            :$weight-column-name = "Weight",                     #= Name of the column with the tag weights.
+            :$item-column-name = "Item",                        #= Name of the column with the items.
+            :$tag-type-column-name = "TagType",                 #= Name of the column with the tag types.
+            :$tag-column-name = "Tag",                          #= Name of the column with the tags.
+            :$weight-column-name = "Weight",                    #= Name of the column with the tag weights.
             Bool:D :$add-tag-types-to-column-names = False,     #= Should tag types be used as prefixes or not?
             Str:D :$tag-value-separator = ":",                  #= String to separate tag-type prefixes from tags (in the column names of the recommendation matrix).
             Bool:D :$numerical-columns-as-categorical = False,  #= Should numerical columns be turned into categorical or not?
@@ -306,6 +333,7 @@ class ML::SparseMatrixRecommender
                             self.create-item-tag-matrix(
                                     @subset,
                                     item-key => $item-column-name,
+                                    tag-type-key => $tag-type-column-name,
                                     tag-key => $tag-column-name,
                                     weight-key => $weight-column-name,
                                     :$add-tag-types-to-column-names,
@@ -331,12 +359,13 @@ class ML::SparseMatrixRecommender
             @rowNames = $matrices.map(*.value.row-names).flat.unique.sort;
             %!matrices = $matrices.map({ $_.key => $_.value.impose-row-names(@rowNames) })
         } else {
-            %!matrices = |$matrices
+            %!matrices = |$matrices;
         }
         %!tag-type-weights = %!matrices.keys X=> 1;
 
         # Make the recommender matrix
         $!M = reduce({$^a.column-bind($^b)}, %!matrices.values);
+        if $!native { $!M.to-adapted }
         self!file-in-items-and-tags;
 
         return self;
@@ -366,6 +395,7 @@ class ML::SparseMatrixRecommender
 
         # Make the recommender matrix
         $!M = reduce({$^a.column-bind($^b)}, %!matrices.values);
+        if $!native { $!M.to-adapted }
         self!file-in-items-and-tags;
         return self;
     }
