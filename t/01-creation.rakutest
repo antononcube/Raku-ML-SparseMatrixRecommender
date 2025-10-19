@@ -56,10 +56,18 @@ subtest {
 
     is @long.elems, $dsData.elems * 4, 'expected length';
 
+    ok
+            ML::SparseMatrixRecommender.new.create-from-long-form(@long, item-column-name => 'id', tag-type-column-name => 'Variable', tag-column-name => 'Value'),
+            'creation with splitting by tag-type';
+
+    ok
+            ML::SparseMatrixRecommender.new.create-from-long-form(@long, item-column-name => 'id', tag-type-column-name => Whatever, tag-column-name => 'Value'),
+            'creation without splitting by tag-type';
+
     my $smrObjLong = ML::SparseMatrixRecommender.new
             .create-from-long-form(@long, item-column-name => 'id', tag-type-column-name => 'Variable', tag-column-name => 'Value');
 
-    isa-ok $smrObjLong,  ML::SparseMatrixRecommender:D;
+    isa-ok $smrObjLong, ML::SparseMatrixRecommender:D;
 
     is $smrObjLong.take-M.rows-count, $dsData.elems, 'expected number of rows of the recommender matrix';
     is $smrObjLong.take-M.columns-count, 17, 'expected number of columns of the recommender matrix';
