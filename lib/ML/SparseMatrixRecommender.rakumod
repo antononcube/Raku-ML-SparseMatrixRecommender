@@ -245,21 +245,21 @@ class ML::SparseMatrixRecommender
     method create-item-tag-matrix(
             @data where @data.all ~~ Map:D,
             Str:D :item-column-name(:$item-key)!,
-            Str:D :tag-type-column-name(:$tag-type-key)!,
             Str:D :tag-column-name(:$tag-key)!,
             :weight-column-name(:$weight-key) = Whatever,
+            :$tag-type = Whatever,
             Bool:D :$add-tag-types-to-column-names = True,
             Str:D :$tag-value-separator = ':'
             --> Math::SparseMatrix:D) {
         my @edge-dataset =
-                do if $add-tag-types-to-column-names {
+                do if $add-tag-types-to-column-names && $tag-type ~~ Str:D {
                     if $weight-key ~~ Str:D {
                         @data.map({ %( :from($_{$item-key}),
-                                       :to($tag-type-key ~ $tag-value-separator ~ $_{$tag-key}),
+                                       :to($tag-type ~ $tag-value-separator ~ $_{$tag-key}),
                                        :weight($_{$weight-key} // 1) ) })
                     } else {
                         @data.map({ %( :from($_{$item-key}),
-                                       :to($tag-type-key ~ $tag-value-separator ~ $_{$tag-key}),
+                                       :to($tag-type ~ $tag-value-separator ~ $_{$tag-key}),
                                        :weight(1) ) })
                     }
                 } else {
@@ -302,7 +302,7 @@ class ML::SparseMatrixRecommender
             $type => self.create-item-tag-matrix(
                     @data,
                     :$item-key,
-                    tag-type-key => $type,
+                    tag-type => $type,
                     tag-key => $type,
                     weight-key => Whatever,
                     :$add-tag-types-to-column-names,
@@ -333,7 +333,7 @@ class ML::SparseMatrixRecommender
                             self.create-item-tag-matrix(
                                     @subset,
                                     item-key => $item-column-name,
-                                    tag-type-key => $tag-type-column-name,
+                                    tag-type => $type,
                                     tag-key => $tag-column-name,
                                     weight-key => $weight-column-name,
                                     :$add-tag-types-to-column-names,
