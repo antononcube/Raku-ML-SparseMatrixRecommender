@@ -20,8 +20,10 @@ my $smrObj =
                 item-column-name => "id",
                 tag-types => ["cap-Shape", "cap-Surface", "cap-Color", "bruises?", "odor", "gill-Attachment", "gill-Spacing", "gill-Size", "gill-Color", "edibility"],
                 :add-tag-types-to-column-names,
-                tag-value-separator => ":")
-        .apply-term-weight-functions("IDF", "None", "Cosine");
+                tag-value-separator => ":");
+
+#$smrObj.apply-term-weight-functions("IDF", "None", "Cosine");
+
 $tend = now;
 say "creation time: {$tend - $tstart}";
 
@@ -30,7 +32,7 @@ say '-' x 100;
 
 my %prof = "cap-Shape:convex" => 1.2, "cap-Color:gray" => 1, "edibility:poisonous" => 1.4;
 my $n = 100;
-my $top-k = Inf;
+my $top-k = 20;
 my @res;
 $tstart = now;
 for ^$n {
@@ -45,11 +47,17 @@ for ^$n {
     #my @res = $rec.tuples.sort(-*.tail)
     #my @res = $rec.tuples;
 
-    # Use the non-zero element directly
-    my @inds = $rec.core-matrix.transpose.col-index;
-    my @vals = $rec.core-matrix.values;
-    my @recInds = @vals.sort(-*, :k).head($top-k);
-    @res = $rec.row-names[@inds[@recInds]] Z=> @vals[@recInds];
+    # Use the non-zero elements directly
+    #my @inds = $rec.core-matrix.transpose.col-index;
+    #my @vals = $rec.core-matrix.values;
+    #my @recInds = @vals.sort(-*, :k).head($top-k);
+    #@res = $rec.row-names[@inds[@recInds]] Z=> @vals[@recInds];
+
+    # Derive a top-K matrix and get row-sums
+    #@res = |$rec.top-k-elements-matrix($top-k, :!clone).row-sums(:pairs).sort({ -$_.value });
+
+    # Derive a top-K matrix and get rules (FASTEST)
+    @res = |$rec.top-k-elements-matrix($top-k, :!clone).rules(:names).map({ $_.key.head => $_.value }).sort({ -$_.value });
 }
 $tend = now;
 say "recommendations by profile total time: {$tend - $tstart}, per dot-product: {($tend - $tstart)/$n}";
