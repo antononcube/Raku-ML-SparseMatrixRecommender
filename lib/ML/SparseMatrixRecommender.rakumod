@@ -404,7 +404,7 @@ class ML::SparseMatrixRecommender
         });
 
         # Make the recommender matrix
-        $!M = reduce({$^a.column-bind($^b)}, %!matrices.values);
+        $!M = %!matrices.elems == 1 ?? %!matrices.values.head !! reduce({$^a.column-bind($^b)}, %!matrices.values);
         if $!native { $!M.to-adapted }
         self!file-in-items-and-tags;
         return self;
@@ -526,11 +526,12 @@ class ML::SparseMatrixRecommender
             }
 
         } else {
-            ## Sort
-            my @res = $rec.rules(:names).map({ $_.key.head => $_.value }).sort({ -$_.value });
-
-            ## Result
-            $rec = @res.head(min($nrecs, @res.elems)).Array;
+            if $nrecs < Inf {
+                $rec = $rec.top-k-elements-matrix($nrecs, :!clone).rules(:names).map({ $_.key.head => $_.value }).sort({ -$_.value }).Array;
+            } else {
+                # If $nrecs is Inf then we skip the making of the top-K elements matrix
+                $rec = $rec.rules(:names).map({ $_.key.head => $_.value }).sort({ -$_.value }).Array;
+            }
         }
 
         # Assign obtained recommendations to the pipeline value
@@ -600,11 +601,12 @@ class ML::SparseMatrixRecommender
             }
 
         } else {
-            ## Sort
-            my @res = $rec.rules(:names).map({ $_.key.head => $_.value }).sort({ -$_.value });
-
-            ## Result
-            $rec = @res.head(min($nrecs, @res.elems)).Array;
+            if $nrecs < Inf {
+                $rec = $rec.top-k-elements-matrix($nrecs, :!clone).rules(:names).map({ $_.key.head => $_.value }).sort({ -$_.value }).Array;
+            } else {
+                # If $nrecs is Inf then we skip the making of the top-K elements matrix
+                $rec = $rec.rules(:names).map({ $_.key.head => $_.value }).sort({ -$_.value }).Array;
+            }
         }
 
         # Assign obtained recommendations to the pipeline value
