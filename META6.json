@@ -1,14 +1,14 @@
 {
     "name": "ML::SparseMatrixRecommender",
     "description": "Sparse matrix recommender framework.",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "authors": [
         "Anton Antonov"
     ],
     "auth": "zef:antononcube",
     "depends": [
         "Data::TypeSystem:ver<0.1.7+>",
-        "Math::SparseMatrix:ver<0.0.8+>"
+        "Math::SparseMatrix:ver<0.0.9+>"
     ],
     "build-depends": [],
     "provides": {
