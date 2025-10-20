@@ -2,12 +2,14 @@
 use v6.d;
 
 use ML::SparseMatrixRecommender;
+use ML::SparseMatrixRecommender::Utilities;
 use Data::Importers;
+use Data::TypeSystem;
 
 my Bool:D $long-form = False;
 my Bool:D $sampling = False;
-#my $tag-types = <cap-Shape cap-Surface cap-Color bruises? odor gill-Attachment gill-Spacing gill-Size gill-Color edibility>;
-my $tag-types = Whatever;
+my $tag-types = <cap-Shape cap-Surface cap-Color bruises? odor gill-Attachment gill-Spacing gill-Size gill-Color edibility>;
+#my $tag-types = Whatever;
 
 my $tstart = now;
 my $url = 'https://raw.githubusercontent.com/antononcube/MathematicaVsR/refs/heads/master/Data/MathematicaVsR-Data-Mushroom.csv';
@@ -29,8 +31,21 @@ if $long-form {
 
 if $sampling {
     say "length before sampling: { @dsData.elems }";
-    @dsData = @dsData.pick(floor(0.2 * @dsData.elems));
+    @dsData = @dsData.head(floor(0.5 * @dsData.elems));
     say "length after sampling : { @dsData.elems }";
+}
+
+#----------------------------------------------------------------------------------------------------
+say '-' x 100;
+
+# Convert to wide form
+if $long-form {
+    my $tstart = now;
+    my @dsDataWide = ML::SparseMatrixRecommender::Utilities::convert-to-wide-form(@dsData);
+    say deduce-type(@dsDataWide);
+    .say for @dsDataWide.head(10);
+    my $tend = now;
+    say "convert to wide form time: {$tend - $tstart}";
 }
 
 #----------------------------------------------------------------------------------------------------
@@ -44,21 +59,29 @@ if $long-form {
             ML::SparseMatrixRecommender.new(:native)
             .create-from-long-form(@dsData,
                     item-column-name => "Item",
-                    tag-column-name => 'Tag',
-                    weight-column-name => 'Value',
+                    tag-type => 'Tag',
+                    tag-column-name => 'Value',
+                    weight-column-name => Whatever,
                     :!add-tag-types-to-column-names);
-    #.apply-term-weight-functions("IDF", "None", "Cosine");
 } else {
     say "Using wide form creation";
     $smrObj =
             ML::SparseMatrixRecommender.new(:native)
             .create-from-wide-form(@dsData,
                     item-column-name => "id",
-                    :tag-types,
+                    :$tag-types,
                     :add-tag-types-to-column-names,
                     tag-value-separator => ":");
-    #.apply-term-weight-functions("IDF", "None", "Cosine");
 }
 
 $tend = now;
 say "creation time: {$tend - $tstart}";
+
+#----------------------------------------------------------------------------------------------------
+say '-' x 100;
+$tstart = now;
+
+$smrObj.apply-term-weight-functions("IDF", "None", "Cosine", native => Whatever);
+
+$tend = now;
+say "application of term-weight functions time: {$tend - $tstart}";
