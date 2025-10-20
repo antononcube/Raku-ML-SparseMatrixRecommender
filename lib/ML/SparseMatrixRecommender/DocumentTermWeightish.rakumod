@@ -1,6 +1,7 @@
 use v6.d;
 
 use Math::SparseMatrix;
+use Math::SparseMatrix::NativeAdapter;
 
 role ML::SparseMatrixRecommender::DocumentTermWeightish {
 
@@ -64,7 +65,8 @@ role ML::SparseMatrixRecommender::DocumentTermWeightish {
     method apply-lsi-weight-functions($doc-term-matrix,
                                       $global-weight-func is copy = Whatever,
                                       $local-weight-func is copy = Whatever,
-                                      $normalizer-func is copy = Whatever) {
+                                      $normalizer-func is copy = Whatever,
+                                      :$native is copy = Whatever) {
         die 'The argument $doc-term-matrix is expected to be a Math::SparseMatrix object.'
         unless $doc-term-matrix ~~ Math::SparseMatrix:D;
 
@@ -75,6 +77,10 @@ role ML::SparseMatrixRecommender::DocumentTermWeightish {
         if $normalizer-func.isa(Whatever) { $normalizer-func = 'None' }
         die "The argument normalizer-func is expected to be a string."
         unless $normalizer-func ~~ Str:D;
+
+        if $native.isa(Whatever) { $native = $doc-term-matrix.core-matrix ~~ Math::SparseMatrix::NativeAdapter:D }
+        die 'The named argument :$native is expected to be a Boolean or Whatever.'
+        unless $native ~~ Bool:D;
 
         my @global-weights;
         if $global-weight-func.isa(Whatever) { $global-weight-func = 'None' }
@@ -102,6 +108,7 @@ role ML::SparseMatrixRecommender::DocumentTermWeightish {
 
         my @diagonal-rules = @global-weights.kv.map( -> $i, $v { ($i, $i) => $v });
         my $diag-mat = Math::SparseMatrix.new(rules => @diagonal-rules, row-names => $mat.column-names, column-names => $mat.column-names);
+        $diag-mat.to-adapted if $native;
         $mat = $mat.dot($diag-mat);
         $mat.set-column-names($doc-term-matrix.column-names);
 
@@ -111,6 +118,7 @@ role ML::SparseMatrixRecommender::DocumentTermWeightish {
                 @svec = @svec.map({ $_ == 0 ?? 1.0 !! (1.0 / $_) });
                 my @rules = @svec.kv.map( -> $i, $v { ($i, $i) => $v });
                 my $diag-mat = Math::SparseMatrix.new(:@rules, row-names => $mat.row-names, column-names => $mat.row-names);
+                $diag-mat.to-adapted if $native;
                 $mat = $diag-mat.dot($mat);
             }
             when $_ ∈ <sum rowstochastic> {
@@ -118,6 +126,7 @@ role ML::SparseMatrixRecommender::DocumentTermWeightish {
                 @svec = @svec.map({ $_ == 0 ?? 1.0 !! (1.0 / $_) });
                 my @rules = @svec.kv.map( -> $i, $v { ($i, $i) => $v });
                 my $diag-mat = Math::SparseMatrix.new(:@rules, row-names => $mat.row-names, column-names => $mat.row-names);
+                $diag-mat.to-adapted if $native;
                 $mat = $diag-mat.dot($mat);
             }
             when $_ ∈ <max maximum> {
