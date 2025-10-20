@@ -7,6 +7,7 @@ use Math::SparseMatrix;
 #----------------------------------------------------------
 # Tested in 01-creation.rakutest
 #----------------------------------------------------------
+my $native = True;
 my $dsData = ML::SparseMatrixRecommender::Utilities::get-titanic-dataset();
 $dsData = $dsData.map({ $_<id> = "id.{$_<id>}"; $_});
 
@@ -17,7 +18,8 @@ my $smr =
                     $dsData,
                     item-column-name => 'id',
                     tag-types => Whatever,
-                    :!add-tag-types-to-column-names
+                    :!add-tag-types-to-column-names,
+                    :$native
                 )
                 .apply-term-weight-functions(
                     global-weight-func => "IDF",

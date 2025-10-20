@@ -9,43 +9,108 @@ sub is-smr-map($arg) {
 
 my $dsData = ML::SparseMatrixRecommender::Utilities::get-titanic-dataset();
 
+plan *;
+
+#==========================================================
 ## 1
+#==========================================================
 is $dsData ~~ (Array:D | List:D) && $dsData.all ~~ Map:D, True, 'expected data shape';
 
+#==========================================================
 ## 2
-ok
-        ML::SparseMatrixRecommender.new.create-from-wide-form($dsData, item-column-name => 'id', tag-types => Whatever, :!add-tag-types-to-column-name),
-        'ok creation from wide form';
+#==========================================================
+subtest {
+    ## 1
+    ok
+            ML::SparseMatrixRecommender
+                    .new
+                    .create-from-wide-form(
+                        $dsData,
+                        item-column-name => 'id',
+                        tag-types => Whatever,
+                        :!add-tag-types-to-column-name,
+                        :!native),
+            'ok creation from wide form';
 
-my $smr =
-        ML::SparseMatrixRecommender
-                .new
-                .create-from-wide-form(
-                    $dsData,
-                    item-column-name => 'id',
-                    tag-types => Whatever,
-                    :!add-tag-types-to-column-names
-                )
-                .apply-term-weight-functions(
+    my $smr =
+            ML::SparseMatrixRecommender
+                    .new
+                    .create-from-wide-form(
+                        $dsData,
+                        item-column-name => 'id',
+                        tag-types => Whatever,
+                        :!add-tag-types-to-column-names
+            )
+            .apply-term-weight-functions(
                     global-weight-func => "IDF",
                     local-weight-func  => "None",
                     normalizer-func    => "Cosine"
-                );
+                    );
 
+    ## 3
+    ok ML::SparseMatrixRecommender.new($smr.take-matrices);
+
+    ## 4
+    my $smr-new = ML::SparseMatrixRecommender.new($smr.take-matrices);
+
+    is
+            $smr-new.take-matrices ~~ Map:D && $smr-new.take-matrices.values.all ~~ Math::SparseMatrix:D,
+            True,
+            "smr-new has valid matricss";
+
+    ## 5
+    is $smr-new.take-M eqv $smr.take-M, True, "M matrices are equal";
+}, 'wide form, not native';
+
+#==========================================================
 ## 3
-ok ML::SparseMatrixRecommender.new($smr.take-matrices);
+#==========================================================
+subtest {
+    ## 1
+    ok
+            ML::SparseMatrixRecommender
+                    .new
+                    .create-from-wide-form(
+            $dsData,
+                    item-column-name => 'id',
+                    tag-types => Whatever,
+                    :!add-tag-types-to-column-name,
+                    :native),
+            'ok creation from wide form';
 
+    my $smr =
+            ML::SparseMatrixRecommender
+                    .new
+                    .create-from-wide-form(
+            $dsData,
+                    item-column-name => 'id',
+                    tag-types => Whatever,
+                    :!add-tag-types-to-column-names
+            )
+            .apply-term-weight-functions(
+                    global-weight-func => "IDF",
+                    local-weight-func  => "None",
+                    normalizer-func    => "Cosine"
+                    );
+
+    ## 3
+    ok ML::SparseMatrixRecommender.new($smr.take-matrices);
+
+    ## 4
+    my $smr-new = ML::SparseMatrixRecommender.new($smr.take-matrices);
+
+    is
+            $smr-new.take-matrices ~~ Map:D && $smr-new.take-matrices.values.all ~~ Math::SparseMatrix:D,
+            True,
+            "smr-new has valid matricss";
+
+    ## 5
+    is $smr-new.take-M eqv $smr.take-M, True, "M matrices are equal";
+}, 'wide form, native';
+
+#==========================================================
 ## 4
-my $smr-new = ML::SparseMatrixRecommender.new($smr.take-matrices);
-
-is
-        $smr-new.take-matrices ~~ Map:D && $smr-new.take-matrices.values.all ~~ Math::SparseMatrix:D,
-        True,
-        "smr-new has valid matricss";
-
-## 5
-is $smr-new.take-M eqv $smr.take-M, True, "M matrices are equal";
-
+#==========================================================
 subtest {
     my @long =
             <passengerAge passengerClass passengerSex passengerSurvival>
