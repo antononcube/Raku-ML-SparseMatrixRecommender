@@ -520,9 +520,7 @@ class ML::SparseMatrixRecommender
         if $vector-result {
 
             if $nrecs < $rec.rows-count {
-                my %recs2 = $rec.rules(:names).map({ $_.key.head => $_.value });
-                my @recs2 = %recs2.grep(*.value > 0).sort(-*.value)>>.key[^$nrecs];
-                $rec = $rec[@recs2;*].impose-row-names($rec.row-names);
+                $rec = $rec.top-k-elements-matrix($nrecs)
             }
 
         } else {
@@ -595,9 +593,7 @@ class ML::SparseMatrixRecommender
         if $vector-result {
 
             if $nrecs < $rec.rows-count {
-                my %recs2 = $rec.rules(:names).map({ $_.key.head => $_.value });
-                my @recs2 = %recs2.grep(*.value > 0).sort(-*.value)>>.key[^$nrecs];
-                $rec = $rec[@recs2;*].impose-row-names($rec.row-names);
+                $rec = $rec.top-k-elements-matrix($nrecs)
             }
 
         } else {
@@ -747,18 +743,25 @@ class ML::SparseMatrixRecommender
     #| C<:$normalize> -- Should the scores be normalized?
     #| C<:$ignore-unknown> -- Should the unknown tags be ignored or not?
     #| C<$object> -- Should the result be an object or not?
-    multi method classify-by-profile(Str $tagType, @profile, *%args) {
-        return self.classify-by-profile($tagType, %(@profile X=> 1.0).Mix, |%args);
-    }
-
     multi method classify-by-profile(Str:D $tag-type,
-                                     Mix:D $profile,
+                                     $profile is copy,
                                      UInt:D :$n-top-nearest-neighbors = 100,
                                      Bool:D :$voting = False,
                                      Bool:D :$drop-zero-scored-labels = True,
                                      :$max-number-of-labels = Whatever,
                                      Bool:D :$normalize = True,
                                      Bool:D :$warn = False) {
+
+        # Process $profile
+        $profile = do given $profile {
+            when $_ ~~ Str:D { [$_, ].Mix}
+            when $_ ~~ (Array:D | List:D | Seq:D) && $_.all ~~ Str:D {$_.Mix}
+            when $_ ~~ Map:D {$_.Mix}
+            when $_ ~~ Mix:D || $_ ~~ Math::SparseMatrix:D {$profile}
+            default {
+                die 'Do not know how to process the second arugment.'
+            }
+        }
 
         # Verify tag type
         unless $tag-type ∈ self.take-matrices.keys {
@@ -773,14 +776,18 @@ class ML::SparseMatrixRecommender
                 :$warn
                 ).take-value;
 
+        $recs.to-adapted if $!native;
+
         # "Nothing" result
-        if $recs.column-sums.head== 0 {
-            self.set-value(%());
+        if $recs.column-sums.head == 0 {
+            self.set-value(Whatever);
             return self;
         }
 
         # Get the tag type matrix
         my $mat-tag-type = self.take-matrices{$tag-type}.clone;
+
+        $mat-tag-type.to-adapted if $!native;
 
         # Transpose in place
         $recs = $recs.transpose;
