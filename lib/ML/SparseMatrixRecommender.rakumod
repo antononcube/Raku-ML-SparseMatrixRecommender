@@ -38,22 +38,35 @@ class ML::SparseMatrixRecommender
         self!file-in-items-and-tags if %!items.elems == 0 || %!tags.elems == 0 || %!items.elems != $!M.nrow || %!tags.elems != $!M.ncol;
 
         # Make the rules
-        my @rules = $mix.map({ %!tags{$_.key}:exists ?? ((%!tags{$_.key}, 0) => $_.value) !! Empty });
+        my @rules = do if $column {
+            $mix.map({ %!tags{$_.key}:exists ?? ((%!tags{$_.key}, 0) => $_.value) !! Empty })
+        } else {
+            $mix.map({ %!tags{$_.key}:exists ?? ((0, %!tags{$_.key}) => $_.value) !! Empty })
+        }
 
         if $warn {
             note 'None of the keys of the argument are known tags.' if @rules.elems == 0;
             note 'Some of the keys of the argument are not known tags.' if 0 < @rules.elems < $mix.elems;
         }
 
-        # Make the column matrix
-        my $mat = Math::SparseMatrix.new(
+        my $mat = do if $column {
+            # Make the column matrix
+            Math::SparseMatrix.new(
                     :@rules,
                     nrow => $!M.ncol,
                     ncol => 1,
                     row-names => $!M.column-names,
                     column-names => [$item-name, ]);
+        } else {
+            # Make the row matrix
+            Math::SparseMatrix.new(
+                    :@rules,
+                    nrow => 1,
+                    ncol => $!M.ncol,
+                    column-names => $!M.column-names,
+                    row-names => [$item-name, ]);
+        }
 
-        if !$column { $mat .= transpose }
         if $!native { $mat.to-adapted }
         return $mat;
     }
@@ -68,23 +81,37 @@ class ML::SparseMatrixRecommender
         self!file-in-items-and-tags if %!items.elems == 0 || %!tags.elems == 0 || %!items.elems != $!M.nrow || %!tags.elems != $!M.ncol;
 
         # Make the rules
-        my @rules = $mix.map({ %!items{$_.key}:exists ?? ((0, %!items{$_.key}) => $_.value) !! Empty });
+        my @rules = do if $column {
+            $mix.map({ %!items{$_.key}:exists ?? ((%!items{$_.key}, 0) => $_.value) !! Empty });
+        } else {
+            $mix.map({ %!items{$_.key}:exists ?? ((0, %!items{$_.key}) => $_.value) !! Empty });
+        }
 
         if $warn {
             note 'None of the keys of the argument are known items.' if @rules.elems == 0;
             note 'Some of the keys of the argument are not known items.' if 0 < @rules.elems < $mix.elems;
         }
 
-        # Make the row matrix
-        my $mat = Math::SparseMatrix.new(
-                :@rules,
-                nrow => 1,
-                ncol => $!M.nrow,
-                row-names => [$tag-name, ],
-                column-names => $!M.row-names,
-                );
+        my $mat = do if $column {
+            # Make the column matrix
+            Math::SparseMatrix.new(
+                    :@rules,
+                    ncol => 1,
+                    nrow => $!M.nrow,
+                    column-names => [$tag-name, ],
+                    row-names => $!M.row-names,
+                    );
+        } else {
+            # Make the row matrix
+            Math::SparseMatrix.new(
+                    :@rules,
+                    nrow => 1,
+                    ncol => $!M.nrow,
+                    row-names => [$tag-name, ],
+                    column-names => $!M.row-names,
+                    );
+        }
 
-        if $column { $mat .= transpose }
         if $!native { $mat.to-adapted }
         return $mat;
     }
@@ -789,8 +816,8 @@ class ML::SparseMatrixRecommender
 
         $mat-tag-type.to-adapted if $!native;
 
-        # Transpose in place
-        $recs = $recs.transpose;
+        # Transpose
+        $recs = $recs.transpose(:!clone);
 
         # Respect voting
         if $voting {
@@ -817,7 +844,7 @@ class ML::SparseMatrixRecommender
         }
 
         # Reverse sort
-        $cl-res = $cl-res.sort({ -$_.value }).Hash;
+        # $cl-res = $cl-res.sort({ -$_.value });
 
         # Pick max-top labels
         if $max-number-of-labels && $max-number-of-labels < $cl-res.elems {
