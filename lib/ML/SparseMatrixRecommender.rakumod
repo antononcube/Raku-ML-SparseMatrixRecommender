@@ -547,7 +547,7 @@ class ML::SparseMatrixRecommender
         if $vector-result {
 
             if $nrecs < $rec.rows-count {
-                $rec = $rec.top-k-elements-matrix($nrecs)
+                $rec = $rec.top-k-elements-matrix($nrecs, :!clone)
             }
 
         } else {
@@ -608,8 +608,6 @@ class ML::SparseMatrixRecommender
 
         ## Compute recommendations
         my $rec = $!M.dot($vec);
-        #my $rec = $!M.to-adapted.dot($svec.to-adapted);
-        #$rec.core-matrix = $rec.core-matrix.to-csr;
 
         ## Normalize
         if $normalize {
@@ -620,7 +618,7 @@ class ML::SparseMatrixRecommender
         if $vector-result {
 
             if $nrecs < $rec.rows-count {
-                $rec = $rec.top-k-elements-matrix($nrecs)
+                $rec = $rec.top-k-elements-matrix($nrecs, :!clone)
             }
 
         } else {
