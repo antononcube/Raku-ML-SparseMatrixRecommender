@@ -524,7 +524,7 @@ class ML::SparseMatrixRecommender
         my $rec = self.take-M.dot($vec.dot(self.take-M).transpose(:!clone));
 
         if $remove-history {
-            my $hist2 = $vec.unitize(:clone).transpose;
+            my $hist2 = $vec.unitize(:clone).transpose(:!clone);
             $hist2 = $hist2.multiply($rec);
             $rec = $rec.add($hist2.multiply(-1));
         }
