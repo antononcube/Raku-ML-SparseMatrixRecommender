@@ -15,7 +15,7 @@ involve profiling and implementations for all three packages:
 
 ## Recommender creation
 
-Currently, version 0.0.3, recommender object creation is very slow for larger data.
+Currently, version 0.0.3, recommender object creation is very slow for larger _long form_ data.
 After some investigation and profiling it seems that most of slow-down comes from the 
 method `impose-row-names` of `Math::SparseMatrix`, [AAp2]. 
 
@@ -39,6 +39,16 @@ Recommendations, both by history and by profile, use three steps:
         - Normalizing the scores.
 
 **Remark:** Sparse vectors are represented as sparse matrix objects with one row or column.
+
+Step 3 has a "vector result" alternative -- that is specified with the option `:vector-result`.
+Vector results are formed via the method `Math::SparseMatrix.top-k-elements` which has 
+an efficient implementation in "Math::SparseMatrix::Native".
+
+**Remark:** Vector results of recommendation computations are useful as intermediate results for 
+computations, like, classification by profile.
+
+**Remark:** Vector results recommendations can be generalized into algorithms (class methods)
+that do batch recommendations -- the argument is a list of profiles or matrix representing profiles.
 
 Obviously, computational performance is influenced at all three steps above.
 The most important and computationally intensive step (i.e. with most operations) is the second one,
@@ -69,7 +79,7 @@ The third step that forms the final result is the slowest.
 #### History filtering
 
 The recommendation vector filtering is currently too slow.
-- Currently, sparse elementwise multiplication is used.
+- Currently, sparse element-wise multiplication is used.
 - There are several alternatives to _try out_ (and see which is faster.)
 
 #### Top-K recommendations
