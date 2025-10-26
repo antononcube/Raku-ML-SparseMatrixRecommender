@@ -446,7 +446,7 @@ class ML::SparseMatrixRecommender
     #| * C<$warn> Should warnings be issued or not?
     method profile($items is copy,
                    Bool:D :$normalize = True,
-                   Bool:D :v(:$vector-result) = False,
+                   Bool:D :v(:matrix-result(:$vector-result)) = False,
                    Bool:D :$warn = True) {
 
         # Process $items
@@ -500,7 +500,7 @@ class ML::SparseMatrixRecommender
                      Numeric:D $nrecs is copy = 12,
                      Bool:D :$normalize = False,
                      Bool:D :$remove-history = True,
-                     Bool:D :v(:$vector-result) = False,
+                     Bool:D :v(:matrix-result(:$vector-result)) = False,
                      Bool:D :$warn = True) {
 
         # Process $items
@@ -577,7 +577,7 @@ class ML::SparseMatrixRecommender
     method recommend-by-profile($tags is copy,
                                 Numeric:D $nrecs is copy = 12,
                                 Bool:D :$normalize = True,
-                                Bool:D :v(:$vector-result) = False,
+                                Bool:D :v(:matrix-result(:$vector-result)) = False,
                                 Bool:D :$warn = True) {
 
         # Process $tags
@@ -646,18 +646,18 @@ class ML::SparseMatrixRecommender
     #| * C<$warn> Should warnings be issued or not?
     multi method filter-by-profile(Mix:D $prof,
                                    Str :$type = 'intersection',
-                                   Bool :$object = True,
-                                   Bool :$warn = True) {
-        return self.filter-by-profile($prof.keys, :$type, :$object, :$warn);
+                                   Bool :$warn = True,
+                                   *%args) {
+        return self.filter-by-profile($prof.keys, :$type, :$warn);
     }
 
     multi method filter-by-profile(@prof,
                                    Str :$type = 'intersection',
-                                   Bool :$object = True,
-                                   Bool :$warn = True) {
+                                   Bool :$warn = True,
+                                   *%args) {
         my %profMix;
         if $type.lc eq 'intersection' {
-            my $profileVec = self.to-profile-vector(@prof.Mix);
+            my $profileVec = self.to-profile-vector(@prof.Mix, :$warn);
             my %sVec = self.take-M.unitize(:clone).dot($profileVec).row-sums(:pairs);
             # Number of non-zero elements of the profile vector
             my $n = $profileVec.column-sums.head;
@@ -665,11 +665,11 @@ class ML::SparseMatrixRecommender
 
         } elsif $type.lc eq 'union' {
 
-            %profMix = self.recommend-by-profile(@prof).take-value
+            %profMix = self.recommend-by-profile(@prof, nrecs => Inf, :$warn).take-value
 
         } else {
             note 'The value of the type argument is expected to be one of \'intersection\' or \'union\'.' if $warn;
-            self.set-value(%());
+            self.set-value(Whatever);
             return self;
         }
 
