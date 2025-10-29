@@ -86,4 +86,18 @@ subtest {
     is $prof>>.value.all ~~ Numeric:D, True;
 }, 'expected recommend by profile object -- scored history';
 
+## 6
+subtest {
+    my %prof = "passengerClass:1st" => 1.2, "passengerSex:male" => 1.4;
+    ok $smr.apply-tag-type-weights([1, 2, 4, 3]);
+    isa-ok $smr.recommend-by-profile(%prof).take-value, Array:D;
+
+    dies-ok {$smr.apply-tag-type-weights({:10pasenger-class})}, 'failure for unknown tag types';
+    ok $smr.apply-tag-type-weights({:10passengerClass});
+
+    isa-ok $smr.recommend-by-profile(%prof).take-value, Array:D;
+
+    # Note: no correctness test,
+}, 'changing tag type weights';
+
 done-testing;

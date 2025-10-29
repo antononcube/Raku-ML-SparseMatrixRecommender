@@ -438,6 +438,54 @@ class ML::SparseMatrixRecommender
     }
 
     ##========================================================
+    ## Apply tag weights
+    ##========================================================
+    method apply-tag-weights(@weights) {
+        my $col-count = self.take-M.columns-count;
+        die "The first argument is expected to be a list of numbers of length $col-count."
+        unless @weights.elems == $col-count && @weights.all ~~ Numeric:D;
+
+        my $W = Math::SparseMatrix.new(diagonal => @weights);
+        my $mat-res = self.take-M.clone.dot($W);
+
+        $mat-res.set-row-names(self.take-M.row-names);
+        $mat-res.set-column-names(self.take-M.column-names);
+
+        self.set-M($mat-res);
+        return self;
+    }
+
+    ##========================================================
+    ## Apply tag type weights
+    ##========================================================
+    method apply-tag-type-weights($weights) {
+        my @weights-list;
+
+        if $weights ~~ (Array:D | List:D | Seq:D) {
+            die "A list first argument is expected to match the number of sub-matrices ({%!matrices.elems}) and have numeric elements."
+            unless $weights.elems == %!matrices.elems && $weights.all ~~ Numeric:D;
+
+            my @keys = %!matrices.keys;
+            for $weights.kv -> $i, $w {
+                @weights-list.append( $w xx %!matrices{@keys[$i]}.columns-count );
+            }
+        } elsif $weights ~~ Map:D {
+            my @unknown-keys = $weights.keys.grep({ %!matrices{$_}:!exists });
+            die "Unknown tag types in weights argument: {@unknown-keys}."
+            if @unknown-keys;
+
+            for %!matrices.keys -> $key {
+                my $w = $weights{$key} // 1;
+                @weights-list.append( $w xx %!matrices{$key}.columns-count );
+            }
+        } else {
+            die "The first argument must be a list or a hashmap of length {%!matrices.elems}.";
+        }
+
+        return self.apply-tag-weights(@weights-list);
+    }
+
+    ##========================================================
     ## Profile
     ##========================================================
     #| Find items profile.
