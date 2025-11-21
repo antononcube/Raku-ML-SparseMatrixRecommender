@@ -56,8 +56,9 @@ our sub convert-to-wide-form(
 our sub categorize-to-intervals(
         @vec,
         :$breaks is copy = Whatever,
-        :$probs is copy = Whatever,
-        Bool :$interval-names = False) returns List {
+        :probabilities(:$probs) is copy = Whatever,
+        Bool :$interval-names = False,
+        Bool:D :p(:$pairs) = False) {
     # Validate input vector
     die "The first argument is expected to be an array of numeric values."
     unless @vec.all ~~ Numeric:D;
@@ -65,7 +66,7 @@ our sub categorize-to-intervals(
     # Handle probabilities
     my @mprobs = do if $probs.isa(Whatever) {
         (^11) >>/>> 10;
-    } elsif $probs ~~ (Array:D | List:D | Seq:D) && $probs.all ~~ Numeric:D {
+    } elsif $probs ~~ (Array:D | List:D | Seq:D) && $probs.all ~~ Numeric:D && ([&&] |$probs.map(0≤*≤1)) {
         $probs.unique.sort
     } else {
         die 'The $probs argument is expected to be a list of probabilities or Whatever.'
@@ -97,5 +98,5 @@ our sub categorize-to-intervals(
         }
     }
 
-    return @res;
+    return $pairs ?? (@vec Z=> @res) !! @res;
 }
