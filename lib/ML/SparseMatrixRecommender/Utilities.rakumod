@@ -1,5 +1,7 @@
 use v6.d;
 
+use Statistics::Distributions::Utilities;
+
 unit module ML::SparseMatrixRecommender::Utilities;
 
 #| Get the Titanic dataset. Returns an array of hashmaps.
@@ -46,4 +48,54 @@ our sub convert-to-wide-form(
     }
 
     return @dsDataWide;
+}
+
+#==========================================================
+# Categorize to intervals
+#==========================================================
+our sub categorize-to-intervals(
+        @vec,
+        :$breaks is copy = Whatever,
+        :$probs is copy = Whatever,
+        Bool :$interval-names = False) returns List {
+    # Validate input vector
+    die "The first argument is expected to be an array of numeric values."
+    unless @vec.all ~~ Numeric:D;
+
+    # Handle probabilities
+    my @mprobs = do if $probs.isa(Whatever) {
+        (^11) >>/>> 10;
+    } elsif $probs ~~ (Array:D | List:D | Seq:D) && $probs.all ~~ Numeric:D {
+        $probs.unique.sort
+    } else {
+        die 'The $probs argument is expected to be a list of probabilities or Whatever.'
+    }
+
+    # Determine breaks
+    my @mbreaks = do if $breaks.isa(Whatever) {
+        my @q = Statistics::Distributions::Utilities::quantile(@vec, @mprobs);
+        @q.unique.sort;
+    } elsif $breaks ~~ (Array:D | List:D | Seq:D) && $breaks.all ~~ Numeric:D {
+        $breaks.grep(Numeric).unique.sort;
+    } else {
+        die 'The $breaks argument is expected to be a list numbers or Whatever.'
+    }
+
+    die "Need at least two distinct break points to define intervals"
+    unless @mbreaks ≥ 2;
+
+    # Categorize each value using binary search equivalent
+    my @res = Statistics::Distributions::Utilities::find-interval(@vec, @mbreaks);
+
+    # Interval names, if specified
+    if $interval-names {
+        my @names = @mbreaks.rotor(2 => -1).map({"{$_.head}≤v<{$_.tail}"});
+        @names.push: "{@mbreaks.tail}≤v<∞";
+
+        @res = @res.map: -> $i {
+            $i < @names.elems ?? @names[$i] !! @names.tail
+        }
+    }
+
+    return @res;
 }
