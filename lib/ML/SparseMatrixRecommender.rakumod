@@ -458,7 +458,7 @@ class ML::SparseMatrixRecommender
     ##========================================================
     ## Apply tag type weights
     ##========================================================
-    method apply-tag-type-weights($weights) {
+    method apply-tag-type-weights($weights, Numeric:D :default(:$default-weight) = 1) {
         my @weights-list;
 
         if $weights ~~ (Array:D | List:D | Seq:D) {
@@ -475,7 +475,7 @@ class ML::SparseMatrixRecommender
             if @unknown-keys;
 
             for %!matrices.keys -> $key {
-                my $w = $weights{$key} // 1;
+                my $w = $weights{$key} // $default-weight;
                 @weights-list.append( $w xx %!matrices{$key}.columns-count );
             }
         } else {
