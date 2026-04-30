@@ -15,11 +15,11 @@ involve profiling and implementations for all three packages:
 
 ## Recommender creation
 
-Currently, version 0.0.3, recommender object creation is very slow for larger _long form_ data.
+For the _older_ version 0.0.3, recommender object creation is very slow for larger _long form_ data.
 After some investigation and profiling it seems that most of slow-down comes from the 
 method `impose-row-names` of `Math::SparseMatrix`, [AAp2]. 
 
-**Remark:** Note that currently in [AAp2] methods like `impose-column-names` and `column-bind` are implemented
+**Remark:** In the older implementation of [AAp2] methods like `impose-column-names` and `column-bind` are implemented
 via `impose-row-names` and `row-bind`.
 
 ## Recommendations computations
