@@ -1,5 +1,13 @@
 Revision history for "ML::SparseMatrixRecommender"
 
+0.0.4 2026-04-30
+    - Dependency on "Math::SparseMatrix" version with faster row- and column imposing.
+    - Bug fix (of LSI application with a specified global weights list.)
+
+0.0.3 2025-10-20
+    - Better performance of core operations.
+    - Various documentation enhancements.
+
 0.0.2 2025-10-14
     - Better README (minor tweaks.)
     - Better .echo-value().
