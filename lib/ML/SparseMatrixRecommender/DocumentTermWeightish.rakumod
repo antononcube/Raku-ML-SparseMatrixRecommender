@@ -90,7 +90,7 @@ role ML::SparseMatrixRecommender::DocumentTermWeightish {
         } elsif $global-weight-func ~~ (Array:D | List:D | Seq:D) && $global-weight-func.elems == $doc-term-matrix.columns-count {
             @global-weights = $global-weight-func;
         } else {
-            die 'The argument global-weight-func is expected to be Whatever, a string, or a numeric vector with length that equals $doc-term-matrix.columns_count'
+            die 'The argument global-weight-func is expected to be Whatever, a string, or a numeric vector with length that equals $doc-term-matrix.columns-count.'
         }
 
         my $mat = $doc-term-matrix.clone;
