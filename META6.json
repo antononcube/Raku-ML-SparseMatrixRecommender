@@ -8,7 +8,7 @@
     "auth": "zef:antononcube",
     "depends": [
         "Data::TypeSystem:ver<0.1.7+>",
-        "Math::SparseMatrix:ver<0.0.10+>",
+        "Math::SparseMatrix:ver<0.0.15+>",
         "Statistics::Distributions:ver<0.1.7+>"
     ],
     "build-depends": [],
