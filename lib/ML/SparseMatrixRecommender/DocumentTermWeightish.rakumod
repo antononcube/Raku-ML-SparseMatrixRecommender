@@ -88,7 +88,7 @@ role ML::SparseMatrixRecommender::DocumentTermWeightish {
         if $global-weight-func ~~ Str:D {
             @global-weights = self.global-term-function-weights($doc-term-matrix, $global-weight-func);
         } elsif $global-weight-func ~~ (Array:D | List:D | Seq:D) && $global-weight-func.elems == $doc-term-matrix.columns-count {
-            @global-weights = $global-weight-func;
+            @global-weights = |$global-weight-func;
         } else {
             die 'The argument global-weight-func is expected to be Whatever, a string, or a numeric vector with length that equals $doc-term-matrix.columns-count.'
         }
